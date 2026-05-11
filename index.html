@@ -169,7 +169,7 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       width:100%;background:var(--primary);border:none;border-radius:10px;
       color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer;
       margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px;
-      opacity:.5;pointer-events:none;" id="signin-btn">
+      opacity:.5;pointer-events:none;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -697,7 +697,7 @@ function openUser(rowNum) {
   document.getElementById('sheet-username').textContent = u.username;
   document.getElementById('edit-email').value    = u.email;
   document.getElementById('edit-notes').value    = u.notes;
-  document.getElementById('edit-expires').value  = u.expiresAt;
+  document.getElementById('edit-expires').value  = u.expiresAt.replace(/\//g, '-');
   document.getElementById('edit-credits').textContent = u.txfrpCredits;
   document.getElementById('pwd-status').textContent = u.passwordHash ? '✓ Set' : '⚠ Not set';
   document.getElementById('pwd-status').style.color = u.passwordHash ? 'var(--green)' : 'var(--amber)';
@@ -731,21 +731,32 @@ function setExpiry(n, unit) {
 
 async function saveUser() {
   if (!editingUser) return;
-  editingUser.email    = document.getElementById('edit-email').value;
-  editingUser.notes    = document.getElementById('edit-notes').value;
-  editingUser.expiresAt = document.getElementById('edit-expires').value;
-  editingUser.txfrpCredits = parseInt(document.getElementById('edit-credits').textContent) || 0;
+
+  const email   = document.getElementById('edit-email').value.trim();
+  const notes   = document.getElementById('edit-notes').value;
+  const credits = parseInt(document.getElementById('edit-credits').textContent) || 0;
+  // Normalize date: accept both YYYY/MM/DD and YYYY-MM-DD, store as YYYY-MM-DD
+  const rawDate = document.getElementById('edit-expires').value;
+  const expires = rawDate.replace(/\//g, '-');
 
   try {
-    await sheetsPut(
-      `${CONFIG.SHEET.USERS}!A${editingUser._row}:K${editingUser._row}`,
-      [[editingUser.username, editingUser.email, editingUser.passwordHash,
-        editingUser.salt, editingUser.txfrpCredits, editingUser.status,
-        editingUser.expiresAt, editingUser.createdAt,
-        editingUser.failedAttempts, editingUser.lockoutUntil, editingUser.notes]]
-    );
-    const idx = allUsers.findIndex(u => u._row === editingUser._row);
-    if (idx >= 0) allUsers[idx] = { ...editingUser };
+    const row = editingUser._row;
+    const sh  = CONFIG.SHEET.USERS;
+
+    // Write each editable field individually — never touch PasswordHash/Salt/CreatedAt
+    await sheetsPut(`${sh}!B${row}`, [[email]]);                    // Email
+    await sheetsPut(`${sh}!E${row}`, [[credits]]);                  // TXFRPCredits
+    await sheetsPut(`${sh}!F${row}`, [[editingUser.status]]);       // Status
+    await sheetsPut(`${sh}!G${row}`, [[expires]]);                  // ExpiresAt
+    await sheetsPut(`${sh}!K${row}`, [[notes]]);                    // Notes
+
+    // Update local cache
+    const idx = allUsers.findIndex(u => u._row === row);
+    if (idx >= 0) Object.assign(allUsers[idx], {
+      email, txfrpCredits: credits,
+      status: editingUser.status, expiresAt: expires, notes,
+    });
+
     toast('✓ Saved');
     closeSheet('user-sheet');
     renderUsers();

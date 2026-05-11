@@ -418,8 +418,16 @@ window.addEventListener('load', () => {
     const msLeft = storedExp - Date.now() - 60000;
     if (msLeft > 0) setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, msLeft);
   } else if (gToken) {
-    // Token stored but expired — try silent re-auth (no popup if Google session is active)
-    if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+    // Token stored but expired — try silent re-auth once tokenClient is ready
+    const attemptSilentRefresh = () => {
+      if (tokenClient) {
+        tokenClient.requestAccessToken({ prompt: '' });
+      } else {
+        // tokenClient not ready yet, retry in 500ms
+        setTimeout(attemptSilentRefresh, 500);
+      }
+    };
+    attemptSilentRefresh();
   }
 });
 

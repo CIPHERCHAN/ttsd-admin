@@ -1,0 +1,14 @@
+{
+  "name": "TTSD Auth Admin",
+  "short_name": "TTSD Admin",
+  "description": "T3CHS TTSD Auth database manager",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0A14",
+  "theme_color": "#6D28D9",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

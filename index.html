@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#6D28D9"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="TTSD Admin"/>
+<title>TTSD Auth Admin</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0A0A14;--surf:#0D0D1A;--surf2:#13131F;
+  --border:#1A1A30;--primary:#6D28D9;--primary-lt:#7C3AED;
+  --text:#E5E7EB;--muted:#6B7280;--dim:#4B5563;
+  --green:#22C55E;--amber:#F59E0B;--red:#EF4444;--blue:#3B82F6;
+  --nav-h:60px;--header-h:54px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto}
+header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+header h1{font-size:17px;font-weight:700;letter-spacing:.3px}
+.badge{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--primary)}
+#main{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
+.screen.active{display:block}
+nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;transition:color .15s}
+.nav-btn.active{color:var(--primary)}
+.nav-btn svg{width:22px;height:22px}
+
+/* ── Login ────────────────────────────────────────────────────── */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100}
+.login-card{width:100%;max-width:360px;background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:32px 24px;text-align:center}
+.login-logo{font-size:11px;font-weight:800;letter-spacing:4px;color:var(--primary);margin-bottom:10px}
+.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.5}
+#g-signin-btn{margin:0 auto 12px}
+.login-hint{font-size:11px;color:var(--dim);line-height:1.5}
+.login-err{color:var(--red);font-size:13px;margin-bottom:12px}
+
+/* ── Cards & rows ─────────────────────────────────────────────── */
+.section-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);padding:16px 14px 6px;text-transform:uppercase}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
+.card-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--border)}
+.card-row:last-child{border-bottom:none}
+.row-label{font-size:13px;color:var(--muted)}
+.row-val{font-size:14px;font-weight:500}
+.row-input{background:none;border:none;color:var(--text);font-size:14px;font-weight:500;text-align:right;width:100%;outline:none}
+.row-input::placeholder{color:var(--dim)}
+.search-wrap{padding:12px;position:sticky;top:0;background:var(--bg);z-index:2}
+.search-box{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;outline:none}
+.search-box::placeholder{color:var(--dim)}
+
+/* ── User list items ──────────────────────────────────────────── */
+.user-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.user-card:active{border-color:var(--primary)}
+.user-head{padding:14px;border-bottom:1px solid var(--border)}
+.user-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.user-name{font-size:16px;font-weight:700}
+.user-email{font-size:12px;color:var(--muted)}
+.status-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 7px;border-radius:4px;border:1px solid}
+.user-stats{display:flex;border-top:1px solid var(--border)}
+.user-stat{flex:1;text-align:center;padding:9px 4px;border-right:1px solid var(--border)}
+.user-stat:last-child{border-right:none}
+.stat-label{font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--dim);margin-bottom:2px}
+.stat-val{font-size:13px;font-weight:600}
+
+/* ── Status colors ────────────────────────────────────────────── */
+.status-Activated{color:var(--green);background:#22C55E11;border-color:#22C55E44}
+.status-Pending{color:var(--amber);background:#F59E0B11;border-color:#F59E0B44}
+.status-Suspended,.status-Expired{color:var(--red);background:#EF444411;border-color:#EF444444}
+
+/* ── Session cards ────────────────────────────────────────────── */
+.session-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
+.session-head{display:flex;align-items:center;padding:14px;border-bottom:1px solid var(--border)}
+.session-name{font-size:16px;font-weight:700;flex:1}
+.session-ver{font-size:12px;color:var(--muted);margin-top:2px}
+.kick-btn{background:#EF444422;border:1px solid #EF444466;border-radius:6px;color:var(--red);font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:.5px}
+.session-body{padding:12px 14px}
+.session-row{display:flex;justify-content:space-between;padding:4px 0}
+.session-key{font-size:12px;color:var(--muted)}
+.session-val{font-size:12px;font-weight:500;text-align:right;max-width:60%}
+
+/* ── Config rows ──────────────────────────────────────────────── */
+.config-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
+.config-row:last-child{border-bottom:none}
+.config-key{flex:1;font-size:13px;color:var(--muted)}
+.config-val-wrap{flex:1.2;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.config-input{background:none;border:none;color:var(--text);font-size:14px;font-weight:600;text-align:right;outline:none;width:100%;padding:4px 0}
+.config-input::placeholder{color:var(--dim)}
+.save-row-btn{background:var(--primary);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;flex-shrink:0}
+
+/* ── Hash cards ───────────────────────────────────────────────── */
+.hash-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
+.hash-head{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
+.hash-ver{background:#6D28D933;border:1px solid #6D28D966;border-radius:5px;color:var(--primary);font-size:12px;font-weight:700;padding:3px 8px;margin-right:8px}
+.hash-date{flex:1;font-size:12px;color:var(--muted)}
+.del-btn{background:none;border:none;color:var(--red);font-size:16px;font-weight:700;cursor:pointer;padding:4px 8px}
+.hash-body{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+.hash-text{font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;flex:1}
+.copy-hint{font-size:11px;color:var(--dim);flex-shrink:0}
+
+/* ── FAB ──────────────────────────────────────────────────────── */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 16px);right:50%;transform:translateX(calc(50% + 220px - 16px));background:var(--primary);border:none;border-radius:28px;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;cursor:pointer;box-shadow:0 4px 16px #6D28D966;z-index:10}
+@media(max-width:480px){.fab{right:16px;transform:none}}
+
+/* ── Bottom sheet / modal ─────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:#000000BB;z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--surf);border-top-left-radius:16px;border-top-right-radius:16px;border:1px solid var(--border);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 4px}
+.sheet-title{font-size:18px;font-weight:700;padding:12px 18px 6px}
+.sheet-close{position:absolute;right:16px;top:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
+.sheet-section{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);padding:14px 18px 6px}
+.sheet-card{background:var(--surf2);border:1px solid var(--border);border-radius:10px;margin:0 14px 4px;overflow:hidden}
+.field-label{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.5px;padding:10px 14px 4px}
+.field-input{display:block;width:100%;background:none;border:none;color:var(--text);font-size:15px;padding:4px 14px 12px;outline:none}
+.field-input::placeholder{color:var(--dim)}
+.field-textarea{min-height:80px;resize:none;font-family:inherit}
+.divider{height:1px;background:var(--border);margin:0 14px}
+
+/* ── Pill pickers ─────────────────────────────────────────────── */
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 14px 14px}
+.pill{background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .12s}
+.pill.active{background:#6D28D933;border-color:var(--primary);color:var(--primary)}
+.pill:active{transform:scale(.96)}
+
+/* ── Credit control ───────────────────────────────────────────── */
+.credit-row{display:flex;align-items:center;gap:8px;padding:10px 14px}
+.credit-btn{width:42px;height:42px;background:var(--surf);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.credit-num{flex:1;text-align:center;font-size:26px;font-weight:700;color:var(--text)}
+.credit-quick{display:flex;gap:8px;padding:4px 14px 12px;flex-wrap:wrap}
+.credit-q-btn{background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.action-row{display:flex;gap:10px;padding:10px 14px}
+.action-btn{flex:1;border:1px solid;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;text-align:center}
+.action-warning{color:var(--amber);background:#F59E0B15;border-color:#F59E0B44}
+.action-info{color:var(--blue);background:#3B82F615;border-color:#3B82F644}
+.sheet-save{display:block;width:calc(100% - 28px);margin:8px 14px;background:var(--primary);border:none;border-radius:10px;color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer}
+.sheet-delete{display:block;width:calc(100% - 28px);margin:8px 14px 20px;background:#EF444415;border:1px solid #EF444444;border-radius:10px;color:var(--red);font-size:14px;font-weight:700;padding:12px;cursor:pointer}
+
+/* ── Feedback ─────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:calc(var(--nav-h) + 16px);left:50%;transform:translateX(-50%);background:#1A1A2E;border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;z-index:300;pointer-events:none;transition:opacity .3s;box-shadow:0 4px 20px #000A}
+.toast.hidden{opacity:0}
+.empty-state{text-align:center;color:var(--muted);padding:60px 20px;font-size:15px}
+.spinner{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted)}
+.error-msg{color:var(--red);padding:16px;font-size:14px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- ── Login ────────────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">T3CHS</div>
+    <div class="login-title">TTSD Auth Admin</div>
+    <div class="login-sub">Manage users, sessions, config and known hashes</div>
+    <div id="login-err" class="login-err" style="display:none"></div>
+    <div id="g-signin-btn"></div>
+    <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
+  </div>
+</div>
+
+<!-- ── App shell ─────────────────────────────────────────────── -->
+<div id="app" style="display:none">
+  <header>
+    <div>
+      <span class="badge">T3CHS</span>
+      <h1 id="page-title">Users</h1>
+    </div>
+    <button onclick="signOut()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px">Sign out</button>
+  </header>
+
+  <div id="main">
+    <!-- Users screen -->
+    <div id="screen-users" class="screen active">
+      <div class="search-wrap">
+        <input class="search-box" type="search" placeholder="Search username or email…" id="user-search" oninput="renderUsers()"/>
+      </div>
+      <div id="users-list"></div>
+    </div>
+
+    <!-- Sessions screen -->
+    <div id="screen-sessions" class="screen">
+      <div id="sessions-list" style="padding:12px 0"></div>
+    </div>
+
+    <!-- Config screen -->
+    <div id="screen-config" class="screen">
+      <div id="config-list"></div>
+    </div>
+
+    <!-- Hashes screen -->
+    <div id="screen-hashes" class="screen">
+      <div id="hashes-list" style="padding:12px 0"></div>
+      <button class="fab" onclick="openAddHash()">+ Add Hash</button>
+    </div>
+  </div>
+
+  <nav>
+    <button class="nav-btn active" onclick="switchTab('users')" id="nav-users">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Users
+    </button>
+    <button class="nav-btn" onclick="switchTab('sessions')" id="nav-sessions">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Sessions
+    </button>
+    <button class="nav-btn" onclick="switchTab('config')" id="nav-config">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+      Config
+    </button>
+    <button class="nav-btn" onclick="switchTab('hashes')" id="nav-hashes">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Hashes
+    </button>
+  </nav>
+</div>
+
+<!-- ── User edit sheet ───────────────────────────────────────── -->
+<div class="overlay" id="user-sheet" onclick="closeSheet('user-sheet')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div style="position:relative">
+      <div class="sheet-title" id="sheet-username">Edit User</div>
+      <button class="sheet-close" onclick="closeSheet('user-sheet')">✕</button>
+    </div>
+
+    <div class="sheet-section">ACCOUNT</div>
+    <div class="sheet-card">
+      <div class="field-label">EMAIL</div>
+      <input class="field-input" id="edit-email" type="email" placeholder="user@email.com"/>
+      <div class="divider"></div>
+      <div class="field-label">NOTES</div>
+      <textarea class="field-input field-textarea" id="edit-notes" placeholder="Admin notes…"></textarea>
+    </div>
+
+    <div class="sheet-section">STATUS</div>
+    <div class="pill-row" id="status-pills">
+      <button class="pill" data-status="Pending"   onclick="pickStatus('Pending')">Pending</button>
+      <button class="pill" data-status="Activated" onclick="pickStatus('Activated')">Activated</button>
+      <button class="pill" data-status="Suspended" onclick="pickStatus('Suspended')">Suspended</button>
+    </div>
+
+    <div class="sheet-section">ACTIVATION PERIOD</div>
+    <div class="sheet-card">
+      <div class="field-label">EXPIRES AT</div>
+      <input class="field-input" id="edit-expires" type="date"/>
+    </div>
+    <div class="pill-row">
+      <button class="pill" onclick="setExpiry(3,'months')">+3 mo</button>
+      <button class="pill" onclick="setExpiry(6,'months')">+6 mo</button>
+      <button class="pill" onclick="setExpiry(1,'years')">+1 yr</button>
+      <button class="pill" onclick="setExpiry(2,'years')">+2 yr</button>
+    </div>
+
+    <div class="sheet-section">TXFRP CREDITS</div>
+    <div class="sheet-card">
+      <div class="credit-row">
+        <button class="credit-btn" onclick="adjustCredits(-1)">−</button>
+        <div class="credit-num" id="edit-credits">0</div>
+        <button class="credit-btn" onclick="adjustCredits(1)">+</button>
+      </div>
+      <div class="credit-quick">
+        <button class="credit-q-btn" onclick="adjustCredits(5)">+5</button>
+        <button class="credit-q-btn" onclick="adjustCredits(10)">+10</button>
+        <button class="credit-q-btn" onclick="adjustCredits(20)">+20</button>
+        <button class="credit-q-btn" onclick="adjustCredits(50)">+50</button>
+      </div>
+    </div>
+
+    <div class="sheet-section">SECURITY</div>
+    <div class="sheet-card">
+      <div class="card-row">
+        <span class="row-label">Password</span>
+        <span id="pwd-status" class="row-val"></span>
+      </div>
+      <div class="card-row">
+        <span class="row-label">Failed attempts</span>
+        <span id="fail-count" class="row-val"></span>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="action-btn action-warning" onclick="resetPassword()">Reset Password</button>
+      <button class="action-btn action-info"    onclick="clearLockout()">Clear Lockout</button>
+    </div>
+
+    <button class="sheet-save"   onclick="saveUser()">Save Changes</button>
+    <button class="sheet-delete" onclick="deleteUser()">Delete User</button>
+  </div>
+</div>
+
+<!-- ── Add Hash sheet ────────────────────────────────────────── -->
+<div class="overlay" id="hash-sheet" onclick="closeSheet('hash-sheet')">
+  <div class="sheet" onclick="event.stopPropagation()" style="max-height:50vh">
+    <div class="sheet-handle"></div>
+    <div style="position:relative">
+      <div class="sheet-title">Register Known Hash</div>
+      <button class="sheet-close" onclick="closeSheet('hash-sheet')">✕</button>
+    </div>
+    <div class="sheet-card" style="margin:8px 14px">
+      <div class="field-label">SHA-256 HASH</div>
+      <input class="field-input" id="new-hash" placeholder="sha256:abc… or just the hex" style="font-family:monospace;font-size:12px"/>
+      <div class="divider"></div>
+      <div class="field-label">VERSION</div>
+      <input class="field-input" id="new-ver" placeholder="3.2.1"/>
+    </div>
+    <button class="sheet-save" onclick="addHash()">Register Hash</button>
+  </div>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────────── -->
+<div class="toast hidden" id="toast"></div>
+
+<!-- ── Google Identity Services ──────────────────────────────── -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+//  CONFIG — fill these in before deploying
+// ══════════════════════════════════════════════════════════════════
+const CONFIG = {
+  WEB_CLIENT_ID:  '618151034869-4agghfdnqrpf8it7cd7igr3v0eitvsuu.apps.googleusercontent.com',
+  SPREADSHEET_ID: '1WQz1WOWPOO3uQfuU5Rl9iSYIwkPLouzj-d4O79cTA6E',
+  SHEET: {
+    USERS:    'users',
+    SESSIONS: 'sessions',
+    CONFIG:   'TXFRPConfig',
+    HASHES:   'KnownHashes',
+  },
+};
+// ══════════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────────
+let gToken   = sessionStorage.getItem('gToken') || '';
+let allUsers = [], allSessions = [], allConfig = [], allHashes = [];
+let editingUser = null;   // user object being edited
+let currentTab  = 'users';
+let tokenClient = null;
+
+// ── Google Sign-In init ───────────────────────────────────────────
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+  // Wait for GSI to load
+  const checkGSI = setInterval(() => {
+    if (!window.google) return;
+    clearInterval(checkGSI);
+
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.WEB_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: async (resp) => {
+        if (resp.error) { showLoginErr('Sign-in failed: ' + resp.error); return; }
+        gToken = resp.access_token;
+        sessionStorage.setItem('gToken', gToken);
+        showApp();
+        await loadAll();
+      },
+    });
+
+    google.accounts.id.renderButton(
+      document.getElementById('g-signin-btn'),
+      { theme: 'filled_black', size: 'large', width: 280, text: 'signin_with' }
+    );
+    google.accounts.id.initialize({
+      client_id: CONFIG.WEB_CLIENT_ID,
+      callback: () => tokenClient.requestAccessToken(),
+    });
+
+    // Auto-restore session if token stored
+    if (gToken) { showApp(); loadAll(); }
+  }, 100);
+});
+
+function showLoginErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function signIn()  { tokenClient.requestAccessToken(); }
+function signOut() {
+  google.accounts.oauth2.revoke(gToken, () => {});
+  gToken = ''; sessionStorage.removeItem('gToken');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
+// ── Sheets API ───────────────────────────────────────────────────
+const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+async function sheetsGet(range) {
+  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}`,
+    { headers: { Authorization: `Bearer ${gToken}` } });
+  if (r.status === 401) { signOut(); throw new Error('Session expired — please sign in again.'); }
+  if (!r.ok) throw new Error('Sheets error ' + r.status);
+  return (await r.json()).values || [];
+}
+
+async function sheetsPut(range, values) {
+  const r = await fetch(
+    `${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    { method: 'PUT', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range, majorDimension: 'ROWS', values }) });
+  if (!r.ok) throw new Error('Save failed: ' + r.status);
+  return r.json();
+}
+
+async function sheetsAppend(sheet, values) {
+  const r = await fetch(
+    `${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ majorDimension: 'ROWS', values: [values] }) });
+  if (!r.ok) throw new Error('Append failed: ' + r.status);
+  return r.json();
+}
+
+async function getSheetId(sheetName) {
+  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`,
+    { headers: { Authorization: `Bearer ${gToken}` } });
+  const j = await r.json();
+  const s = j.sheets.find(s => s.properties.title === sheetName);
+  return s ? s.properties.sheetId : null;
+}
+
+async function deleteRow(sheetName, rowNum) {
+  const sheetId = await getSheetId(sheetName);
+  if (sheetId === null) throw new Error('Sheet not found: ' + sheetName);
+  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
+    { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests: [{ deleteDimension: { range: {
+        sheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum
+      }}}]}) });
+  if (!r.ok) throw new Error('Delete failed: ' + r.status);
+}
+
+// ── Data loaders ─────────────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([loadUsers(), loadSessions(), loadConfig(), loadHashes()]);
+}
+
+async function loadUsers() {
+  setContent('users-list', spinner());
+  try {
+    const rows = await sheetsGet(`${CONFIG.SHEET.USERS}!A2:K`);
+    allUsers = rows.map((r, i) => ({
+      _row: i + 2,
+      username:       r[0] || '', email:          r[1] || '',
+      passwordHash:   r[2] || '', salt:           r[3] || '',
+      txfrpCredits:   +r[4] || 0, status:         r[5] || 'Pending',
+      expiresAt:      r[6] || '', createdAt:      r[7] || '',
+      failedAttempts: +r[8] || 0, lockoutUntil:   r[9] || '',
+      notes:          r[10] || '',
+    }));
+    renderUsers();
+  } catch(e) { setContent('users-list', errMsg(e)); }
+}
+
+async function loadSessions() {
+  setContent('sessions-list', spinner());
+  try {
+    const rows = await sheetsGet(`${CONFIG.SHEET.SESSIONS}!A2:G`);
+    allSessions = rows.map((r, i) => ({
+      _row: i + 2,
+      username: r[0]||'', machineId: r[1]||'',
+      loginAt: +r[2]||0,  lastBeat: +r[3]||0,
+      version: r[5]||'',
+    }));
+    renderSessions();
+  } catch(e) { setContent('sessions-list', errMsg(e)); }
+}
+
+async function loadConfig() {
+  setContent('config-list', spinner());
+  try {
+    const rows = await sheetsGet(`${CONFIG.SHEET.CONFIG}!A2:B`);
+    allConfig = rows.map((r, i) => ({ _row: i + 2, key: r[0]||'', value: r[1]||'' }));
+    renderConfig();
+  } catch(e) { setContent('config-list', errMsg(e)); }
+}
+
+async function loadHashes() {
+  setContent('hashes-list', spinner());
+  try {
+    const rows = await sheetsGet(`${CONFIG.SHEET.HASHES}!A2:C`);
+    allHashes = [...rows.map((r, i) => ({ _row: i + 2, hash: r[0]||'', version: r[1]||'', registeredAt: r[2]||'' }))].reverse();
+    renderHashes();
+  } catch(e) { setContent('hashes-list', errMsg(e)); }
+}
+
+// ── Renderers ─────────────────────────────────────────────────────
+function renderUsers() {
+  const q = (document.getElementById('user-search').value || '').toLowerCase();
+  const list = allUsers.filter(u =>
+    u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+
+  if (!list.length) { setContent('users-list', `<div class="empty-state">${q ? 'No users match that search.' : 'No users found.'}</div>`); return; }
+
+  setContent('users-list', list.map(u => {
+    const expired = u.expiresAt && new Date(u.expiresAt) < new Date(new Date().toDateString());
+    const statusLabel = u.status === 'Activated' && expired ? 'Expired' : u.status;
+    const statusCls   = u.status === 'Activated' && expired ? 'status-Expired' : 'status-' + u.status;
+    const expiryColor = expired ? 'color:var(--red)' : '';
+    return `
+      <div class="user-card" onclick="openUser(${u._row})">
+        <div class="user-head">
+          <div class="user-name-row">
+            <span class="user-name">${esc(u.username)}</span>
+            <span class="status-badge ${statusCls}">${statusLabel.toUpperCase()}</span>
+          </div>
+          <div class="user-email">${esc(u.email) || '—'}</div>
+        </div>
+        <div class="user-stats">
+          <div class="user-stat">
+            <div class="stat-label">EXPIRES</div>
+            <div class="stat-val" style="${expiryColor}">${u.expiresAt || '—'}</div>
+          </div>
+          <div class="user-stat">
+            <div class="stat-label">CREDITS</div>
+            <div class="stat-val">${u.txfrpCredits}</div>
+          </div>
+          <div class="user-stat">
+            <div class="stat-label">FAILS</div>
+            <div class="stat-val" style="${u.failedAttempts > 0 ? 'color:var(--amber)' : ''}">${u.failedAttempts || '—'}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join(''));
+}
+
+function renderSessions() {
+  if (!allSessions.length) { setContent('sessions-list', '<div class="empty-state">No active sessions.</div>'); return; }
+  setContent('sessions-list', allSessions.map(s => {
+    const minsAgo = s.lastBeat ? (Date.now() - s.lastBeat) / 60000 : Infinity;
+    const beatColor = minsAgo < 5 ? 'var(--green)' : minsAgo < 30 ? 'var(--amber)' : 'var(--red)';
+    const beatLabel = s.lastBeat ? timeSince(s.lastBeat) : '—';
+    const mid = s.machineId;
+    return `
+      <div class="session-card">
+        <div class="session-head">
+          <div>
+            <div class="session-name">${esc(s.username)}</div>
+            <div class="session-ver">v${esc(s.version) || '?'}</div>
+          </div>
+          <button class="kick-btn" onclick="kickSession(${s._row}, '${esc(s.username)}')">KICK</button>
+        </div>
+        <div class="session-body">
+          <div class="session-row">
+            <span class="session-key">Machine ID</span>
+            <span class="session-val" style="font-family:monospace;font-size:11px">${mid.slice(0,20)}${mid.length>20?'…':''}</span>
+          </div>
+          <div class="session-row">
+            <span class="session-key">Logged in</span>
+            <span class="session-val">${s.loginAt ? new Date(s.loginAt).toLocaleString() : '—'}</span>
+          </div>
+          <div class="session-row">
+            <span class="session-key">Last heartbeat</span>
+            <span class="session-val" style="color:${beatColor}">${beatLabel}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join(''));
+}
+
+function renderConfig() {
+  const PRICE_KEYS  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
+  const SECRET_KEYS = ['AHToolUsername','AHToolPassword'];
+  const SERVER_KEYS = ['AHToolServer'];
+
+  const section = (label, rows) => rows.length ? `
+    <div class="section-label">${label}</div>
+    <div class="card">
+      ${rows.map(r => configRow(r, SECRET_KEYS.includes(r.key), PRICE_KEYS.includes(r.key))).join('')}
+    </div>` : '';
+
+  const prices  = allConfig.filter(r => PRICE_KEYS.includes(r.key));
+  const creds   = allConfig.filter(r => SECRET_KEYS.includes(r.key) || SERVER_KEYS.includes(r.key));
+  const other   = allConfig.filter(r => ![...PRICE_KEYS,...SECRET_KEYS,...SERVER_KEYS].includes(r.key));
+
+  setContent('config-list',
+    section('PRICING (Credits)', prices) +
+    section('AH-TOOL CREDENTIALS', creds) +
+    (other.length ? section('OTHER', other) : '') +
+    '<div style="height:30px"></div>'
+  );
+}
+
+function configRow(r, isSecret, isPrice) {
+  const label = r.key.replace(/([A-Z])/g, ' $1').replace(/^Cost /, '💰 ').replace(/^AH Tool /, '🔑 AH-Tool ').trim();
+  return `
+    <div class="config-row" id="cfg-row-${r._row}">
+      <span class="config-key">${label}</span>
+      <div class="config-val-wrap">
+        <input class="config-input" id="cfg-${r._row}" value="${esc(r.value)}"
+          type="${isSecret ? 'password' : 'text'}"
+          inputmode="${isPrice ? 'numeric' : 'text'}"
+          onchange="onConfigChange(${r._row})" oninput="onConfigChange(${r._row})"/>
+        <button class="save-row-btn" id="cfg-btn-${r._row}" style="display:none" onclick="saveConfigRow(${r._row})">Save</button>
+      </div>
+    </div>`;
+}
+
+function onConfigChange(rowNum) {
+  const r    = allConfig.find(c => c._row === rowNum);
+  const curr = document.getElementById('cfg-' + rowNum)?.value ?? '';
+  const btn  = document.getElementById('cfg-btn-' + rowNum);
+  if (btn) btn.style.display = curr !== r.value ? 'block' : 'none';
+}
+
+async function saveConfigRow(rowNum) {
+  const r   = allConfig.find(c => c._row === rowNum);
+  const val = document.getElementById('cfg-' + rowNum).value;
+  const btn = document.getElementById('cfg-btn-' + rowNum);
+  btn.textContent = '…';
+  try {
+    await sheetsPut(`${CONFIG.SHEET.CONFIG}!A${rowNum}:B${rowNum}`, [[r.key, val]]);
+    r.value = val;
+    btn.style.display = 'none';
+    toast('✓ Saved');
+  } catch(e) { toast('✗ ' + e.message, true); btn.textContent = 'Save'; }
+}
+
+function renderHashes() {
+  if (!allHashes.length) { setContent('hashes-list', '<div class="empty-state">No known hashes registered.</div>'); return; }
+  setContent('hashes-list', allHashes.map(h => `
+    <div class="hash-card">
+      <div class="hash-head">
+        <span class="hash-ver">v${esc(h.version) || '?'}</span>
+        <span class="hash-date">${h.registeredAt ? new Date(h.registeredAt).toLocaleDateString() : '—'}</span>
+        <button class="del-btn" onclick="deleteHash(${h._row})">✕</button>
+      </div>
+      <div class="hash-body" onclick="copyHash('${esc(h.hash)}')">
+        <span class="hash-text">${esc(h.hash)}</span>
+        <span class="copy-hint">copy</span>
+      </div>
+    </div>`).join(''));
+}
+
+// ── Tab navigation ────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  const titles = { users: 'Users', sessions: 'Sessions', config: 'TXFRP Config', hashes: 'Known Hashes' };
+  document.getElementById('page-title').textContent = titles[tab];
+}
+
+// ── User edit sheet ───────────────────────────────────────────────
+function openUser(rowNum) {
+  const u = allUsers.find(u => u._row === rowNum);
+  if (!u) return;
+  editingUser = { ...u };
+
+  document.getElementById('sheet-username').textContent = u.username;
+  document.getElementById('edit-email').value    = u.email;
+  document.getElementById('edit-notes').value    = u.notes;
+  document.getElementById('edit-expires').value  = u.expiresAt;
+  document.getElementById('edit-credits').textContent = u.txfrpCredits;
+  document.getElementById('pwd-status').textContent = u.passwordHash ? '✓ Set' : '⚠ Not set';
+  document.getElementById('pwd-status').style.color = u.passwordHash ? 'var(--green)' : 'var(--amber)';
+  document.getElementById('fail-count').textContent = u.failedAttempts || '0';
+  document.getElementById('fail-count').style.color = u.failedAttempts > 0 ? 'var(--amber)' : 'var(--muted)';
+  updateStatusPills(u.status);
+  openSheet('user-sheet');
+}
+
+function pickStatus(s) { editingUser.status = s; updateStatusPills(s); }
+function updateStatusPills(s) {
+  document.querySelectorAll('#status-pills .pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.status === s);
+  });
+}
+
+function adjustCredits(delta) {
+  const cur = parseInt(document.getElementById('edit-credits').textContent) || 0;
+  const nw  = Math.max(0, cur + delta);
+  document.getElementById('edit-credits').textContent = nw;
+}
+
+function setExpiry(n, unit) {
+  const d = new Date();
+  if (unit === 'months') d.setMonth(d.getMonth() + n);
+  else d.setFullYear(d.getFullYear() + n);
+  document.getElementById('edit-expires').value = d.toISOString().slice(0, 10);
+  if (editingUser) editingUser.status = 'Activated';
+  updateStatusPills('Activated');
+}
+
+async function saveUser() {
+  if (!editingUser) return;
+  editingUser.email    = document.getElementById('edit-email').value;
+  editingUser.notes    = document.getElementById('edit-notes').value;
+  editingUser.expiresAt = document.getElementById('edit-expires').value;
+  editingUser.txfrpCredits = parseInt(document.getElementById('edit-credits').textContent) || 0;
+
+  try {
+    await sheetsPut(
+      `${CONFIG.SHEET.USERS}!A${editingUser._row}:K${editingUser._row}`,
+      [[editingUser.username, editingUser.email, editingUser.passwordHash,
+        editingUser.salt, editingUser.txfrpCredits, editingUser.status,
+        editingUser.expiresAt, editingUser.createdAt,
+        editingUser.failedAttempts, editingUser.lockoutUntil, editingUser.notes]]
+    );
+    const idx = allUsers.findIndex(u => u._row === editingUser._row);
+    if (idx >= 0) allUsers[idx] = { ...editingUser };
+    toast('✓ Saved');
+    closeSheet('user-sheet');
+    renderUsers();
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+async function resetPassword() {
+  if (!confirm(`Reset password for "${editingUser.username}"?\n\nThey will need to set a new password on next login.`)) return;
+  try {
+    await sheetsPut(`${CONFIG.SHEET.USERS}!C${editingUser._row}:D${editingUser._row}`, [['', '']]);
+    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`, [[0, '']]);
+    editingUser.passwordHash = ''; editingUser.salt = '';
+    editingUser.failedAttempts = 0; editingUser.lockoutUntil = '';
+    document.getElementById('pwd-status').textContent = '⚠ Not set';
+    document.getElementById('pwd-status').style.color = 'var(--amber)';
+    document.getElementById('fail-count').textContent = '0';
+    toast('✓ Password reset');
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+async function clearLockout() {
+  try {
+    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`, [[0, '']]);
+    editingUser.failedAttempts = 0;
+    document.getElementById('fail-count').textContent = '0';
+    document.getElementById('fail-count').style.color = 'var(--muted)';
+    toast('✓ Lockout cleared');
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+async function deleteUser() {
+  if (!confirm(`Permanently delete "${editingUser.username}"? This cannot be undone.`)) return;
+  try {
+    await deleteRow(CONFIG.SHEET.USERS, editingUser._row);
+    allUsers = allUsers.filter(u => u._row !== editingUser._row);
+    closeSheet('user-sheet');
+    renderUsers();
+    toast('✓ User deleted');
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+// ── Sessions ──────────────────────────────────────────────────────
+async function kickSession(rowNum, username) {
+  if (!confirm(`Force logout "${username}"?`)) return;
+  try {
+    await deleteRow(CONFIG.SHEET.SESSIONS, rowNum);
+    allSessions = allSessions.filter(s => s._row !== rowNum);
+    renderSessions();
+    toast('✓ Session kicked');
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+// ── Hashes ────────────────────────────────────────────────────────
+function openAddHash() {
+  document.getElementById('new-hash').value = '';
+  document.getElementById('new-ver').value  = '';
+  openSheet('hash-sheet');
+}
+
+async function addHash() {
+  const raw = document.getElementById('new-hash').value.trim();
+  const ver = document.getElementById('new-ver').value.trim();
+  if (!raw) return;
+  const clean = raw.toLowerCase().replace(/^sha256:/, '');
+  try {
+    await sheetsAppend(CONFIG.SHEET.HASHES, [clean, ver, new Date().toISOString()]);
+    closeSheet('hash-sheet');
+    toast('✓ Hash registered');
+    await loadHashes();
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+async function deleteHash(rowNum) {
+  if (!confirm('Remove this hash?')) return;
+  try {
+    await deleteRow(CONFIG.SHEET.HASHES, rowNum);
+    toast('✓ Hash removed');
+    await loadHashes();
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
+function copyHash(hash) {
+  navigator.clipboard.writeText(hash).then(() => toast('✓ Copied to clipboard'));
+}
+
+// ── Sheet overlay helpers ─────────────────────────────────────────
+function openSheet(id)  { document.getElementById(id).classList.add('open'); }
+function closeSheet(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--red)' : 'var(--green)';
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 2500);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────
+function timeSince(ms) {
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+function setContent(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function spinner() { return '<div class="spinner">Loading…</div>'; }
+function errMsg(e) { return `<div class="error-msg">⚠ ${esc(e.message)}</div>`; }
+</script>
+</body>
+</html>

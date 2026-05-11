@@ -1,4 +1,4 @@
-const CACHE = 'ttsd-admin-v4';
+const CACHE = 'ttsd-admin-v5';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install',  e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));

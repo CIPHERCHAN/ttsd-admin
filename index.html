@@ -354,7 +354,7 @@ const CONFIG = {
 // ══════════════════════════════════════════════════════════════════
 
 // ── State ─────────────────────────────────────────────────────────
-let gToken   = sessionStorage.getItem('gToken') || '';
+let gToken   = localStorage.getItem('gToken') || '';
 let allUsers = [], allSessions = [], allConfig = [], allHashes = [];
 let editingUser = null;   // user object being edited
 let currentTab  = 'users';
@@ -381,9 +381,15 @@ window.addEventListener('load', () => {
       callback: async (resp) => {
         if (resp.error) { showLoginErr('Sign-in failed: ' + resp.error); return; }
         gToken = resp.access_token;
-        sessionStorage.setItem('gToken', gToken);
-        showApp();
-        await loadAll();
+        localStorage.setItem('gToken', gToken);
+        localStorage.setItem('gTokenExp', String(Date.now() + 55*60*1000));
+        // Schedule silent refresh 54 min from now (before 55 min expiry)
+        setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, 54*60*1000);
+        // Only show app if coming from login (not a background refresh)
+        if (!document.getElementById('app') || document.getElementById('app').style.display === 'none' || document.getElementById('app').style.display === '') {
+          showApp();
+          await loadAll();
+        }
       },
     });
 
@@ -402,8 +408,19 @@ window.addEventListener('load', () => {
     }, 8000);
   }
 
-  // Auto-restore stored session
-  if (gToken) { showApp(); loadAll(); }
+  // Restore session — check if token is still fresh
+  const storedExp = parseInt(localStorage.getItem('gTokenExp') || '0');
+  if (gToken && storedExp > Date.now()) {
+    // Token valid: restore immediately, no popup
+    showApp();
+    loadAll();
+    // Schedule silent refresh 1 min before expiry
+    const msLeft = storedExp - Date.now() - 60000;
+    if (msLeft > 0) setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, msLeft);
+  } else if (gToken) {
+    // Token stored but expired — try silent re-auth (no popup if Google session is active)
+    if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+  }
 });
 
 function showLoginErr(msg) {
@@ -417,7 +434,7 @@ function signIn() {
 }
 function signOut() {
   google.accounts.oauth2.revoke(gToken, () => {});
-  gToken = ''; sessionStorage.removeItem('gToken');
+  gToken = ''; localStorage.removeItem('gToken'); localStorage.removeItem('gTokenExp');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }

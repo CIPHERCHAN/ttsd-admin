@@ -478,6 +478,7 @@ async function deleteRow(sheetName, rowNum) {
 // ── Data loaders ─────────────────────────────────────────────────
 async function loadAll() {
   await Promise.all([loadUsers(), loadSessions(), loadConfig(), loadHashes()]);
+  updateLastUpdated();
 }
 
 async function loadUsers() {
@@ -686,6 +687,7 @@ function switchTab(tab) {
   document.getElementById('nav-' + tab).classList.add('active');
   const titles = { users: 'Users', sessions: 'Sessions', config: 'TXFRP Config', hashes: 'Known Hashes' };
   document.getElementById('page-title').textContent = titles[tab];
+  refreshCurrentTab(); // refresh data when switching to a tab
 }
 
 // ── User edit sheet ───────────────────────────────────────────────

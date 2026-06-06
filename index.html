@@ -225,6 +225,7 @@ nav::before{
 .status-Available{color:var(--teal); background:var(--teal-dim); border-color:#10B98144}
 .status-InUse    {color:var(--amber);background:var(--amber-dim);border-color:#F59E0B44}
 .status-Locked   {color:var(--red);  background:var(--red-dim);  border-color:#F0404044}
+.status-Cooldown {color:#8B5CF6;background:#8B5CF615;border-color:#8B5CF644}
 
 /* ── Session cards ───────────────────────────────────────────── */
 .session-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);margin:0 12px 8px;overflow:hidden}
@@ -524,6 +525,10 @@ nav::before{
           <div class="pool-pill pool-locked">
             <div class="pool-count" id="pool-locked">—</div>
             <div class="pool-label">Locked</div>
+          </div>
+          <div class="pool-pill" style="border-color:#8B5CF644;background:#8B5CF610;flex:1">
+            <div class="pool-count" id="pool-cooldown" style="color:#8B5CF6">—</div>
+            <div class="pool-label" style="color:#8B5CF6">Cooldown</div>
           </div>
         </div>
         <div id="tta-list" style="padding-top:8px"></div>
@@ -929,10 +934,11 @@ async function loadTta() {
     ]);
     allTtaAccounts = accRows.map((r, i) => ({
       _row: i+2,
-      email:      r[0]||'', password:    r[1]||'',
-      status:     r[2]||'Available', assignedTo: r[3]||'',
-      assignedAt: +r[4]||0, lockedAt: +r[5]||0,
-      usageCount: +r[6]||0, notes: r[7]||'',
+      email:         r[0]||'', password:    r[1]||'',
+      status:        r[2]||'Available', assignedTo: r[3]||'',
+      assignedAt:    +r[4]||0, lockedAt: +r[5]||0,
+      usageCount:    +r[6]||0, notes: r[7]||'',
+      cooldownUntil: +r[8]||0,  // col I ← NEW
     }));
     allTtaLog = [...logRows.map((r, i) => ({
       _row: i+2, username: r[0]||'', email: r[1]||'',
@@ -1007,7 +1013,7 @@ function renderConfig() {
   const PRICE  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
   const SECRET = ['AHToolUsername','AHToolPassword'];
   const SERVER = ['AHToolServer'];
-  const TTA    = ['TtaSessionMinutes','TtaAdminEmail'];
+  const TTA    = ['TtaSessionMinutes','TtaAdminEmail','TtaCooldownHours'];
 
   const section = (label, rows) => rows.length ? `
     <div class="section-label">${label}</div>
@@ -1071,35 +1077,45 @@ function renderHashes() {
 }
 
 function renderTta() {
-  // Pool counts
   const av = allTtaAccounts.filter(a=>a.status==='Available').length;
   const iu = allTtaAccounts.filter(a=>a.status==='InUse').length;
   const lk = allTtaAccounts.filter(a=>a.status==='Locked').length;
+  const cd = allTtaAccounts.filter(a=>a.status==='Cooldown').length;
   document.getElementById('pool-available').textContent = av;
   document.getElementById('pool-inuse').textContent     = iu;
   document.getElementById('pool-locked').textContent    = lk;
+  document.getElementById('pool-cooldown').textContent  = cd;
 
-  // Sort: Locked first (needs attention), then InUse, then Available
-  const sorted = [...allTtaAccounts].sort((a,b) => {
-    const o = {Locked:0,InUse:1,Available:2};
-    return (o[a.status]??3)-(o[b.status]??3);
-  });
+  // Sort: Locked first (needs action), Cooldown next, InUse, Available last
+  const order = {Locked:0, Cooldown:1, InUse:2, Available:3};
+  const sorted = [...allTtaAccounts].sort((a,b) => (order[a.status]??4)-(order[b.status]??4));
 
   if (!sorted.length) { setContent('tta-list', '<div class="empty-state">No accounts in pool yet.<br>Tap + to add one.</div>'); }
   else {
     setContent('tta-list', sorted.map(a => {
-      const isLocked = a.status==='Locked';
-      const lockedAt = a.lockedAt ? new Date(a.lockedAt).toLocaleString() : null;
+      const isLocked   = a.status==='Locked';
+      const isCooldown = a.status==='Cooldown';
+      let metaHtml = '';
+      if (a.status==='InUse') {
+        metaHtml = `<span class="tta-assigned">👤 ${esc(a.assignedTo)} · ${a.assignedAt?timeSince(a.assignedAt):'?'}</span>`;
+      } else if (isLocked) {
+        const lockedAt = a.lockedAt ? new Date(a.lockedAt).toLocaleString() : '';
+        metaHtml = `<span style="color:var(--red);font-size:11px">🔒 Locked ${lockedAt} · tap to start cooldown</span>`;
+      } else if (isCooldown) {
+        const remaining = a.cooldownUntil ? Math.max(0, Math.ceil((a.cooldownUntil - Date.now()) / 3600000)) : 0;
+        metaHtml = `<span style="color:#8B5CF6;font-size:11px">⏳ Ready in ~${remaining}h · password already changed</span>`;
+      } else {
+        metaHtml = `<span>Usage: <span class="tta-usage">${a.usageCount||0}×</span></span>`;
+      }
+      const borderStyle = isLocked ? 'border-color:#F0404033' : isCooldown ? 'border-color:#8B5CF633' : '';
       return `
-        <div class="tta-card ${isLocked?'locked-card':''}" onclick="openTta(${a._row})">
+        <div class="tta-card ${isLocked?'locked-card':''}" style="${borderStyle}" onclick="openTta(${a._row})">
           <div class="tta-card-head">
-            <span class="tta-email">${esc(a.email)}</span>
+            <span class="tta-email" style="${isCooldown?'color:#8B5CF6':''}">${esc(a.email)}</span>
             <span class="status-badge status-${a.status}">${a.status.toUpperCase()}</span>
           </div>
           <div class="tta-card-meta">
-            ${a.status==='InUse' ? `<span class="tta-assigned">👤 ${esc(a.assignedTo)} · ${a.assignedAt?timeSince(a.assignedAt):'?'}</span>` :
-              a.status==='Locked' ? `<span style="color:var(--red);font-size:11px">🔒 Locked ${lockedAt||''} · pending password reset</span>` :
-              `<span>Usage: <span class="tta-usage">${a.usageCount||0}×</span></span>`}
+            ${metaHtml}
             ${a.notes?`<span style="flex:1;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">${esc(a.notes)}</span>`:''}
           </div>
         </div>`;
@@ -1111,12 +1127,14 @@ function renderTta() {
   else {
     setContent('tta-log-list', `<div class="card" style="margin:10px 12px">` +
       allTtaLog.slice(0,80).map(l => {
-        const isReq = l.event==='Requested';
+        const isReq  = l.event==='Requested';
+        const isAvail= l.event==='Available';
+        const dotColor = isReq?'var(--teal)':isAvail?'var(--green)':'var(--amber)';
         const ts = l.timestamp ? new Date(l.timestamp) : null;
         const timeStr = ts ? ts.toLocaleDateString()+' '+ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
         return `
           <div class="log-row">
-            <div class="log-dot ${isReq?'req':'lock'}"></div>
+            <div class="log-dot" style="background:${dotColor}"></div>
             <div class="log-info">
               <div class="log-user">${esc(l.username)} <span style="font-weight:400;color:var(--muted)">· ${esc(l.event)}</span></div>
               <div class="log-email">${esc(l.email)}</div>
@@ -1277,27 +1295,44 @@ function openTta(row) {
   badge.className = 'status-badge status-' + a.status;
 
   const meta = document.getElementById('tta-assigned-info');
-  if (a.status==='InUse') meta.textContent = `→ ${a.assignedTo}, ${timeSince(a.assignedAt)}`;
-  else if (a.status==='Locked') meta.textContent = a.lockedAt ? `locked ${timeSince(a.lockedAt)}` : '';
-  else meta.textContent = `used ${a.usageCount||0}×`;
+  if (a.status==='InUse')     meta.textContent = `→ ${a.assignedTo}, ${timeSince(a.assignedAt)}`;
+  else if (a.status==='Locked')   meta.textContent = a.lockedAt ? `locked ${timeSince(a.lockedAt)}` : '';
+  else if (a.status==='Cooldown') {
+    const rem = a.cooldownUntil ? Math.max(0, Math.ceil((a.cooldownUntil - Date.now()) / 3600000)) : 0;
+    meta.textContent = `ready in ~${rem}h`;
+  } else meta.textContent = `used ${a.usageCount||0}×`;
 
   updateTtaStatusPills(a.status);
 
-  // Show/hide reset hint for locked accounts
   const hint = document.getElementById('tta-reset-hint');
-  hint.style.display = a.status==='Locked' ? 'block' : 'none';
   const saveBtn = document.getElementById('tta-save-btn');
-  saveBtn.textContent = a.status==='Locked' ? 'Mark as Available' : 'Save Account';
-  saveBtn.className = 'sheet-save sheet-save-teal';
 
+  if (a.status === 'Locked') {
+    hint.style.display = 'block';
+    hint.innerHTML = `<div style="margin:0 14px 10px;padding:12px 14px;background:var(--teal-dim);border:1px solid var(--teal-glow);border-radius:10px;font-size:12px;color:var(--teal);line-height:1.6">
+      💡 Enter the new password you already set on the Transsion portal above, then tap <strong>Start Cooldown</strong>.<br>
+      Account will be hidden for <strong>24 hours</strong>, then auto-returns to the pool.
+    </div>`;
+    saveBtn.textContent = 'Password Changed — Start Cooldown';
+  } else if (a.status === 'Cooldown') {
+    const rem = a.cooldownUntil ? Math.max(0, Math.ceil((a.cooldownUntil - Date.now()) / 3600000)) : 0;
+    hint.style.display = 'block';
+    hint.innerHTML = `<div style="margin:0 14px 10px;padding:12px 14px;background:#8B5CF615;border:1px solid #8B5CF644;border-radius:10px;font-size:12px;color:#8B5CF6;line-height:1.6">
+      ⏳ Cooldown active — ~${rem}h remaining. Auto-returns to pool when timer expires.<br>
+      Tap <strong>Force Release</strong> to make it available immediately.
+    </div>`;
+    saveBtn.textContent = 'Force Release Now';
+  } else {
+    hint.style.display = 'none';
+    saveBtn.textContent = 'Save Account';
+  }
+  saveBtn.className = 'sheet-save sheet-save-teal';
   openSheet('tta-sheet');
 }
 
 function pickTtaStatus(s) {
   editingTta.status = s;
   updateTtaStatusPills(s);
-  document.getElementById('tta-reset-hint').style.display = s==='Locked'?'block':'none';
-  document.getElementById('tta-save-btn').textContent = s==='Locked'?'Mark as Available':'Save Account';
 }
 
 function updateTtaStatusPills(s) {
@@ -1312,31 +1347,40 @@ async function saveTtaAccount() {
   const email    = document.getElementById('tta-email').value.trim();
   const password = document.getElementById('tta-password').value;
   const notes    = document.getElementById('tta-notes').value;
+  const wasLocked  = editingTta.status === 'Locked';
+  const isCooldown = editingTta.status === 'Cooldown';
 
-  // If was Locked and now saving → mark as Available (admin has changed the password)
-  const newStatus = editingTta.status==='Locked' ? 'Available' : editingTta.status;
-  const clearLock = editingTta.status==='Locked'; // clear assignment fields
+  let newStatus, cooldownUntil = '';
+  let assignedTo = editingTta.assignedTo, assignedAt = editingTta.assignedAt||'', lockedAt = editingTta.lockedAt||'';
+
+  if (wasLocked) {
+    // Admin confirmed password changed — start 24h cooldown
+    newStatus = 'Cooldown';
+    cooldownUntil = Date.now() + 24 * 3600000;
+    assignedTo = ''; assignedAt = ''; lockedAt = '';
+  } else if (isCooldown) {
+    // Force release — skip cooldown
+    newStatus = 'Available'; cooldownUntil = ''; assignedTo = ''; assignedAt = ''; lockedAt = '';
+  } else {
+    newStatus = editingTta.status;
+    cooldownUntil = editingTta.cooldownUntil || '';
+  }
 
   try {
-    const r = editingTta._row;
-    const s = CONFIG.SHEET.TTA_ACCOUNTS;
-    await sheetsPut(`${s}!A${r}:H${r}`, [[
-      email, password, newStatus,
-      clearLock ? '' : editingTta.assignedTo,
-      clearLock ? '' : (editingTta.assignedAt||''),
-      clearLock ? '' : (editingTta.lockedAt||''),
-      editingTta.usageCount||0,
-      notes,
+    const r = editingTta._row, s = CONFIG.SHEET.TTA_ACCOUNTS;
+    await sheetsPut(`${s}!A${r}:I${r}`, [[
+      email, password, newStatus, assignedTo, assignedAt, lockedAt,
+      editingTta.usageCount||0, notes, cooldownUntil,
     ]]);
     const idx = allTtaAccounts.findIndex(a=>a._row===r);
-    if (idx>=0) Object.assign(allTtaAccounts[idx],{email,password,status:newStatus,notes,
-      assignedTo: clearLock?'':editingTta.assignedTo,
-      assignedAt: clearLock?0:editingTta.assignedAt,
-      lockedAt:   clearLock?0:editingTta.lockedAt,
+    if (idx>=0) Object.assign(allTtaAccounts[idx], {
+      email, password, status:newStatus, notes,
+      assignedTo, assignedAt: assignedAt ? +assignedAt : 0,
+      lockedAt: lockedAt ? +lockedAt : 0,
+      cooldownUntil: cooldownUntil ? +cooldownUntil : 0,
     });
-    toast(clearLock ? '✓ Account reset — back in pool' : '✓ Saved');
-    closeSheet('tta-sheet');
-    renderTta();
+    const msg = wasLocked ? '✓ Cooldown started — available in 24h' : isCooldown ? '✓ Force released — back in pool' : '✓ Saved';
+    toast(msg); closeSheet('tta-sheet'); renderTta();
   } catch(e) { toast('✗ '+e.message,true); }
 }
 

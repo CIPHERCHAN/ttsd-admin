@@ -3,173 +3,456 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<meta name="theme-color" content="#6D28D9"/>
+<meta name="theme-color" content="#06060F"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="TTSD Admin"/>
-<title>TTSD Auth Admin</title>
+<meta name="apple-mobile-web-app-title" content="T3CHS Admin"/>
+<title>T3CHS Admin</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet"/>
 <style>
-/* ── Reset & base ─────────────────────────────────────────────── */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* ── Design tokens ───────────────────────────────────────────── */
 :root{
-  --bg:#0A0A14;--surf:#0D0D1A;--surf2:#13131F;
-  --border:#1A1A30;--primary:#6D28D9;--primary-lt:#7C3AED;
-  --text:#E5E7EB;--muted:#6B7280;--dim:#4B5563;
-  --green:#22C55E;--amber:#F59E0B;--red:#EF4444;--blue:#3B82F6;
-  --nav-h:60px;--header-h:54px;
+  --bg:       #06060F;
+  --surf:     #0B0B1A;
+  --surf2:    #10101E;
+  --surf3:    #161628;
+  --border:   #1C1C34;
+  --border2:  #242440;
+
+  --primary:      #7C3AED;
+  --primary-lt:   #9B6BF7;
+  --primary-dim:  #7C3AED22;
+  --primary-glow: #7C3AED55;
+
+  --teal:     #10B981;
+  --teal-dim: #10B98120;
+  --teal-glow:#10B98155;
+
+  --text:   #E8E8F0;
+  --text2:  #A0A0B8;
+  --muted:  #68688A;
+  --dim:    #42425A;
+
+  --green:  #22C55E;
+  --amber:  #F59E0B;
+  --red:    #F04040;
+  --blue:   #60A5FA;
+
+  --green-dim: #22C55E18;
+  --amber-dim: #F59E0B18;
+  --red-dim:   #F0404018;
+  --blue-dim:  #60A5FA18;
+
+  --radius:  10px;
+  --radius-lg: 16px;
+  --nav-h:   64px;
+  --hdr-h:   56px;
+
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px}
 
-/* ── Layout ───────────────────────────────────────────────────── */
+/* ── Reset ───────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{
+  height:100%;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-body);font-size:15px;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── App shell ───────────────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto}
-header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
-header h1{font-size:17px;font-weight:700;letter-spacing:.3px}
-.badge{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--primary)}
+
+/* ── Header ──────────────────────────────────────────────────── */
+header{
+  height:var(--hdr-h);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:var(--surf);
+  border-bottom:1px solid var(--border);
+  position:relative;
+}
+header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--primary-glow),transparent);
+}
+.hdr-left{display:flex;flex-direction:column;gap:1px}
+.hdr-brand{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;
+  letter-spacing:3px;color:var(--primary-lt);text-transform:uppercase;
+}
+#page-title{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.hdr-right{display:flex;align-items:center;gap:6px}
+.hdr-btn{
+  background:var(--surf2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text2);font-size:12px;font-weight:500;
+  padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;
+  font-family:var(--font-body);
+}
+.hdr-btn:active{opacity:.7}
+.hdr-refresh{width:32px;padding:6px;justify-content:center;font-size:15px}
+
+/* ── Main / screens ──────────────────────────────────────────── */
 #main{flex:1;overflow:hidden;position:relative}
-.screen{position:absolute;inset:0;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
+.screen{position:absolute;inset:0;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch;padding-bottom:12px}
 .screen.active{display:block}
-nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.3px;transition:color .15s}
-.nav-btn.active{color:var(--primary)}
-.nav-btn svg{width:22px;height:22px}
 
-/* ── Login ────────────────────────────────────────────────────── */
-#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100}
-.login-card{width:100%;max-width:360px;background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:32px 24px;text-align:center}
-.login-logo{font-size:11px;font-weight:800;letter-spacing:4px;color:var(--primary);margin-bottom:10px}
-.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.5}
-#g-signin-btn{margin:0 auto 12px}
-.login-hint{font-size:11px;color:var(--dim);line-height:1.5}
+/* ── Nav ─────────────────────────────────────────────────────── */
+nav{
+  height:var(--nav-h);display:flex;flex-shrink:0;
+  background:var(--surf);border-top:1px solid var(--border);
+  position:relative;
+}
+nav::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--primary-glow),transparent);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;border:none;
+  background:none;color:var(--muted);font-family:var(--font-body);
+  font-size:9.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  position:relative;transition:color .18s;
+}
+.nav-btn::after{
+  content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;
+  background:var(--primary);border-radius:1px 1px 0 0;opacity:0;transition:opacity .18s;
+}
+.nav-btn.active{color:var(--primary-lt)}
+.nav-btn.active::after{opacity:1}
+.nav-btn.tta-tab.active{color:var(--teal)}
+.nav-btn.tta-tab.active::after{background:var(--teal)}
+.nav-icon{width:20px;height:20px}
+
+/* ── Login ───────────────────────────────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:100;
+}
+.login-card{
+  width:100%;max-width:340px;
+  background:var(--surf);border:1px solid var(--border2);
+  border-radius:20px;padding:36px 24px;text-align:center;
+  box-shadow:0 0 60px #7C3AED18,0 20px 60px #00000060;
+}
+.login-brand{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  letter-spacing:4px;color:var(--primary-lt);margin-bottom:12px;
+}
+.login-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
 .login-err{color:var(--red);font-size:13px;margin-bottom:12px}
+#signin-btn{
+  width:100%;background:linear-gradient(135deg,#7C3AED,#5B21B6);
+  border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;
+  padding:14px;cursor:pointer;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  opacity:.4;pointer-events:none;font-family:var(--font-body);
+  box-shadow:0 4px 20px #7C3AED44;transition:opacity .2s,box-shadow .2s;
+}
+#signin-btn.ready{opacity:1;pointer-events:auto}
+#signin-btn:active{box-shadow:0 2px 10px #7C3AED44}
+.login-hint{font-size:11px;color:var(--dim);line-height:1.6}
 
-/* ── Cards & rows ─────────────────────────────────────────────── */
-.section-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);padding:16px 14px 6px;text-transform:uppercase}
-.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
-.card-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--border)}
+/* ── Section labels ──────────────────────────────────────────── */
+.section-label{
+  font-size:10px;font-weight:700;letter-spacing:1.2px;
+  color:var(--dim);padding:16px 14px 7px;text-transform:uppercase;
+  font-family:var(--font-mono);
+}
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.card{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--radius);margin:0 12px 10px;overflow:hidden;
+}
+.card-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 15px;border-bottom:1px solid var(--border);
+}
 .card-row:last-child{border-bottom:none}
-.row-label{font-size:13px;color:var(--muted)}
+.row-label{font-size:13px;color:var(--text2)}
 .row-val{font-size:14px;font-weight:500}
-.row-input{background:none;border:none;color:var(--text);font-size:14px;font-weight:500;text-align:right;width:100%;outline:none}
-.row-input::placeholder{color:var(--dim)}
-.search-wrap{padding:12px;position:sticky;top:0;background:var(--bg);z-index:2}
-.search-box{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;outline:none}
+
+/* ── Search ──────────────────────────────────────────────────── */
+.search-wrap{
+  padding:10px 12px;position:sticky;top:0;
+  background:var(--bg);z-index:2;
+  border-bottom:1px solid var(--border);
+}
+.search-box{
+  width:100%;background:var(--surf);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;color:var(--text);
+  font-size:14px;outline:none;font-family:var(--font-body);
+  transition:border-color .15s;
+}
+.search-box:focus{border-color:var(--primary-glow)}
 .search-box::placeholder{color:var(--dim)}
 
-/* ── User list items ──────────────────────────────────────────── */
-.user-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden;cursor:pointer;transition:border-color .15s}
-.user-card:active{border-color:var(--primary)}
-.user-head{padding:14px;border-bottom:1px solid var(--border)}
+/* ── User cards ──────────────────────────────────────────────── */
+.user-card{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--radius);margin:0 12px 8px;overflow:hidden;
+  cursor:pointer;transition:border-color .15s;
+}
+.user-card:active{border-color:var(--primary-glow)}
+.user-head{padding:13px 15px;border-bottom:1px solid var(--border)}
 .user-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
-.user-name{font-size:16px;font-weight:700}
+.user-name{font-size:16px;font-weight:700;letter-spacing:-.2px}
 .user-email{font-size:12px;color:var(--muted)}
-.status-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 7px;border-radius:4px;border:1px solid}
-.user-stats{display:flex;border-top:1px solid var(--border)}
+.status-badge{
+  font-size:9.5px;font-weight:700;letter-spacing:.6px;
+  padding:3px 8px;border-radius:5px;border:1px solid;
+  font-family:var(--font-mono);
+}
+.user-stats{display:flex}
 .user-stat{flex:1;text-align:center;padding:9px 4px;border-right:1px solid var(--border)}
 .user-stat:last-child{border-right:none}
-.stat-label{font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--dim);margin-bottom:2px}
+.stat-label{font-size:9px;font-weight:700;letter-spacing:.6px;color:var(--dim);margin-bottom:3px;font-family:var(--font-mono)}
 .stat-val{font-size:13px;font-weight:600}
 
-/* ── Status colors ────────────────────────────────────────────── */
-.status-Activated{color:var(--green);background:#22C55E11;border-color:#22C55E44}
-.status-Pending{color:var(--amber);background:#F59E0B11;border-color:#F59E0B44}
-.status-Suspended,.status-Expired{color:var(--red);background:#EF444411;border-color:#EF444444}
+/* ── Status colors ───────────────────────────────────────────── */
+.status-Activated{color:var(--green);background:var(--green-dim);border-color:#22C55E44}
+.status-Pending  {color:var(--amber);background:var(--amber-dim);border-color:#F59E0B44}
+.status-Suspended,.status-Expired{color:var(--red);background:var(--red-dim);border-color:#F0404044}
+.status-Available{color:var(--teal); background:var(--teal-dim); border-color:#10B98144}
+.status-InUse    {color:var(--amber);background:var(--amber-dim);border-color:#F59E0B44}
+.status-Locked   {color:var(--red);  background:var(--red-dim);  border-color:#F0404044}
 
-/* ── Session cards ────────────────────────────────────────────── */
-.session-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
-.session-head{display:flex;align-items:center;padding:14px;border-bottom:1px solid var(--border)}
+/* ── Session cards ───────────────────────────────────────────── */
+.session-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);margin:0 12px 8px;overflow:hidden}
+.session-head{display:flex;align-items:center;padding:13px 15px;border-bottom:1px solid var(--border)}
 .session-name{font-size:16px;font-weight:700;flex:1}
 .session-ver{font-size:12px;color:var(--muted);margin-top:2px}
-.kick-btn{background:#EF444422;border:1px solid #EF444466;border-radius:6px;color:var(--red);font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;letter-spacing:.5px}
-.session-body{padding:12px 14px}
-.session-row{display:flex;justify-content:space-between;padding:4px 0}
-.session-key{font-size:12px;color:var(--muted)}
+.kick-btn{
+  background:var(--red-dim);border:1px solid #F0404044;
+  border-radius:7px;color:var(--red);font-size:11px;font-weight:700;
+  padding:7px 12px;cursor:pointer;letter-spacing:.5px;font-family:var(--font-mono);
+}
+.session-body{padding:11px 15px}
+.session-row{display:flex;justify-content:space-between;padding:4px 0;align-items:center}
+.session-key{font-size:12px;color:var(--text2)}
 .session-val{font-size:12px;font-weight:500;text-align:right;max-width:60%}
 
-/* ── Config rows ──────────────────────────────────────────────── */
-.config-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
+/* ── Config ──────────────────────────────────────────────────── */
+.config-row{display:flex;align-items:center;padding:12px 15px;border-bottom:1px solid var(--border)}
 .config-row:last-child{border-bottom:none}
-.config-key{flex:1;font-size:13px;color:var(--muted)}
+.config-key{flex:1;font-size:13px;color:var(--text2)}
 .config-val-wrap{flex:1.2;display:flex;align-items:center;justify-content:flex-end;gap:8px}
-.config-input{background:none;border:none;color:var(--text);font-size:14px;font-weight:600;text-align:right;outline:none;width:100%;padding:4px 0}
+.config-input{
+  background:none;border:none;color:var(--text);font-size:14px;font-weight:600;
+  text-align:right;outline:none;width:100%;padding:4px 0;font-family:var(--font-mono);
+}
 .config-input::placeholder{color:var(--dim)}
-.save-row-btn{background:var(--primary);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;flex-shrink:0}
+.save-row-btn{
+  background:var(--primary);border:none;border-radius:6px;color:#fff;
+  font-size:11px;font-weight:700;padding:5px 10px;cursor:pointer;
+  flex-shrink:0;font-family:var(--font-mono);
+}
 
-/* ── Hash cards ───────────────────────────────────────────────── */
-.hash-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 12px 10px;overflow:hidden}
-.hash-head{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
-.hash-ver{background:#6D28D933;border:1px solid #6D28D966;border-radius:5px;color:var(--primary);font-size:12px;font-weight:700;padding:3px 8px;margin-right:8px}
+/* ── Hash cards ──────────────────────────────────────────────── */
+.hash-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);margin:0 12px 8px;overflow:hidden}
+.hash-head{display:flex;align-items:center;padding:12px 15px;border-bottom:1px solid var(--border)}
+.hash-ver{
+  background:var(--primary-dim);border:1px solid var(--primary-glow);
+  border-radius:5px;color:var(--primary-lt);font-size:11px;font-weight:700;
+  padding:3px 8px;margin-right:8px;font-family:var(--font-mono);
+}
 .hash-date{flex:1;font-size:12px;color:var(--muted)}
 .del-btn{background:none;border:none;color:var(--red);font-size:16px;font-weight:700;cursor:pointer;padding:4px 8px}
-.hash-body{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
-.hash-text{font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;flex:1}
+.hash-body{padding:12px 15px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+.hash-text{font-family:var(--font-mono);font-size:11px;color:var(--text);word-break:break-all;flex:1}
 .copy-hint{font-size:11px;color:var(--dim);flex-shrink:0}
 
-/* ── FAB ──────────────────────────────────────────────────────── */
-.fab{position:fixed;bottom:calc(var(--nav-h) + 16px);right:50%;transform:translateX(calc(50% + 220px - 16px));background:var(--primary);border:none;border-radius:28px;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;cursor:pointer;box-shadow:0 4px 16px #6D28D966;z-index:10}
+/* ── TTA pool pills ──────────────────────────────────────────── */
+.pool-bar{display:flex;gap:8px;padding:12px 12px 4px}
+.pool-pill{
+  flex:1;background:var(--surf);border:1px solid var(--border);
+  border-radius:10px;padding:10px 8px;text-align:center;
+}
+.pool-count{font-size:22px;font-weight:700;font-family:var(--font-mono);line-height:1}
+.pool-label{font-size:9px;font-weight:700;letter-spacing:.8px;margin-top:3px;font-family:var(--font-mono);text-transform:uppercase}
+.pool-available{border-color:#10B98144;background:#10B98110}
+.pool-available .pool-count,.pool-available .pool-label{color:var(--teal)}
+.pool-inuse{border-color:#F59E0B44;background:#F59E0B10}
+.pool-inuse .pool-count,.pool-inuse .pool-label{color:var(--amber)}
+.pool-locked{border-color:#F0404044;background:#F0404010}
+.pool-locked .pool-count,.pool-locked .pool-label{color:var(--red)}
+
+/* ── TTA account cards ───────────────────────────────────────── */
+.tta-card{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--radius);margin:0 12px 8px;overflow:hidden;
+  cursor:pointer;transition:border-color .15s;
+}
+.tta-card:active{border-color:var(--teal-glow)}
+.tta-card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px}
+.tta-email{font-size:14px;font-weight:600;font-family:var(--font-mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tta-card-meta{padding:0 15px 13px;font-size:12px;color:var(--muted);display:flex;gap:16px;align-items:center}
+.tta-assigned{display:flex;align-items:center;gap:5px}
+.tta-usage{font-family:var(--font-mono);color:var(--dim)}
+
+/* TTA locked card highlight */
+.tta-card.locked-card{border-color:#F0404033}
+.tta-card.locked-card .tta-email{color:var(--red)}
+
+/* ── Log rows ────────────────────────────────────────────────── */
+.log-row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 15px;border-bottom:1px solid var(--border);
+}
+.log-row:last-child{border-bottom:none}
+.log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.log-dot.req{background:var(--teal)}
+.log-dot.lock{background:var(--amber)}
+.log-info{flex:1;min-width:0}
+.log-user{font-size:13px;font-weight:600}
+.log-email{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-time{font-size:11px;color:var(--dim);font-family:var(--font-mono);flex-shrink:0;text-align:right}
+.log-note{font-size:11px;color:var(--muted)}
+
+/* ── TTA sub-tabs ────────────────────────────────────────────── */
+.sub-tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--bg);position:sticky;top:0;z-index:2;
+}
+.sub-tab{
+  flex:1;padding:11px 8px;text-align:center;font-size:12px;font-weight:700;
+  letter-spacing:.4px;color:var(--muted);cursor:pointer;border:none;
+  background:none;font-family:var(--font-body);border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+.sub-tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+
+/* ── FAB ─────────────────────────────────────────────────────── */
+.fab{
+  position:fixed;bottom:calc(var(--nav-h) + 16px);
+  right:50%;transform:translateX(calc(50% + 220px - 16px));
+  background:linear-gradient(135deg,#7C3AED,#5B21B6);
+  border:none;border-radius:28px;color:#fff;
+  font-size:14px;font-weight:700;padding:12px 20px;cursor:pointer;
+  box-shadow:0 4px 20px #7C3AED55;z-index:10;
+  font-family:var(--font-body);transition:box-shadow .2s;
+}
+.fab:active{box-shadow:0 2px 8px #7C3AED55}
+.fab-teal{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 4px 20px #10B98155}
+.fab-teal:active{box-shadow:0 2px 8px #10B98155}
 @media(max-width:480px){.fab{right:16px;transform:none}}
 
-/* ── Bottom sheet / modal ─────────────────────────────────────── */
-.overlay{position:fixed;inset:0;background:#000000BB;z-index:200;display:none;align-items:flex-end;justify-content:center}
+/* ── Bottom sheet / overlay ──────────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;background:#000000CC;
+  z-index:200;display:none;align-items:flex-end;justify-content:center;
+}
 .overlay.open{display:flex}
-.sheet{background:var(--surf);border-top-left-radius:16px;border-top-right-radius:16px;border:1px solid var(--border);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 4px}
-.sheet-title{font-size:18px;font-weight:700;padding:12px 18px 6px}
-.sheet-close{position:absolute;right:16px;top:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
-.sheet-section{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);padding:14px 18px 6px}
-.sheet-card{background:var(--surf2);border:1px solid var(--border);border-radius:10px;margin:0 14px 4px;overflow:hidden}
-.field-label{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.5px;padding:10px 14px 4px}
-.field-input{display:block;width:100%;background:none;border:none;color:var(--text);font-size:15px;padding:4px 14px 12px;outline:none}
+.sheet{
+  background:var(--surf);border-top:1px solid var(--border2);
+  border-top-left-radius:20px;border-top-right-radius:20px;
+  width:100%;max-width:480px;max-height:93vh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  box-shadow:0 -8px 40px #00000080;
+}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:14px auto 4px}
+.sheet-title{font-size:19px;font-weight:700;padding:10px 18px 8px;letter-spacing:-.3px}
+.sheet-close{position:absolute;right:14px;top:14px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:14px;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.sheet-section{font-size:10px;font-weight:700;letter-spacing:1.2px;color:var(--dim);padding:14px 18px 7px;text-transform:uppercase;font-family:var(--font-mono)}
+.sheet-card{background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);margin:0 14px 8px;overflow:hidden}
+.field-label{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.8px;padding:10px 14px 3px;font-family:var(--font-mono)}
+.field-input{display:block;width:100%;background:none;border:none;color:var(--text);font-size:15px;padding:4px 14px 12px;outline:none;font-family:var(--font-body)}
 .field-input::placeholder{color:var(--dim)}
-.field-textarea{min-height:80px;resize:none;font-family:inherit}
-.divider{height:1px;background:var(--border);margin:0 14px}
+.field-mono{font-family:var(--font-mono);font-size:13px}
+.field-textarea{min-height:72px;resize:none;font-family:inherit}
+.divider{height:1px;background:var(--border);margin:0}
 
-/* ── Pill pickers ─────────────────────────────────────────────── */
+/* ── Pill pickers ────────────────────────────────────────────── */
 .pill-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 14px 14px}
-.pill{background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .12s}
-.pill.active{background:#6D28D933;border-color:var(--primary);color:var(--primary)}
+.pill{
+  background:var(--surf2);border:1px solid var(--border);border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600;color:var(--muted);
+  cursor:pointer;transition:all .12s;font-family:var(--font-body);
+}
+.pill.active{background:var(--primary-dim);border-color:var(--primary-glow);color:var(--primary-lt)}
+.pill.active-teal{background:var(--teal-dim);border-color:var(--teal-glow);color:var(--teal)}
 .pill:active{transform:scale(.96)}
 
-/* ── Credit control ───────────────────────────────────────────── */
-.credit-row{display:flex;align-items:center;gap:8px;padding:10px 14px}
-.credit-btn{width:42px;height:42px;background:var(--surf);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.credit-num{flex:1;text-align:center;font-size:26px;font-weight:700;color:var(--text)}
+/* ── Credit control ──────────────────────────────────────────── */
+.credit-row{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.credit-btn{
+  width:44px;height:44px;background:var(--surf);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:22px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.credit-num{flex:1;text-align:center;font-size:28px;font-weight:700;font-family:var(--font-mono)}
 .credit-quick{display:flex;gap:8px;padding:4px 14px 12px;flex-wrap:wrap}
-.credit-q-btn{background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+.credit-q-btn{
+  background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted);
+  cursor:pointer;font-family:var(--font-body);
+}
 
-/* ── Action buttons ───────────────────────────────────────────── */
-.action-row{display:flex;gap:10px;padding:10px 14px}
-.action-btn{flex:1;border:1px solid;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;text-align:center}
-.action-warning{color:var(--amber);background:#F59E0B15;border-color:#F59E0B44}
-.action-info{color:var(--blue);background:#3B82F615;border-color:#3B82F644}
-.sheet-save{display:block;width:calc(100% - 28px);margin:8px 14px;background:var(--primary);border:none;border-radius:10px;color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer}
-.sheet-delete{display:block;width:calc(100% - 28px);margin:8px 14px 20px;background:#EF444415;border:1px solid #EF444444;border-radius:10px;color:var(--red);font-size:14px;font-weight:700;padding:12px;cursor:pointer}
+/* ── Action buttons ──────────────────────────────────────────── */
+.action-row{display:flex;gap:10px;padding:8px 14px}
+.action-btn{
+  flex:1;border:1px solid;border-radius:8px;padding:11px;
+  font-size:13px;font-weight:700;cursor:pointer;text-align:center;
+  font-family:var(--font-body);
+}
+.action-warning{color:var(--amber);background:var(--amber-dim);border-color:#F59E0B44}
+.action-info{color:var(--blue);background:var(--blue-dim);border-color:#60A5FA44}
+.action-danger{color:var(--red);background:var(--red-dim);border-color:#F0404044}
+.action-teal{color:var(--teal);background:var(--teal-dim);border-color:#10B98144}
+.sheet-save{
+  display:block;width:calc(100% - 28px);margin:8px 14px;
+  background:linear-gradient(135deg,#7C3AED,#5B21B6);border:none;
+  border-radius:11px;color:#fff;font-size:16px;font-weight:700;
+  padding:14px;cursor:pointer;font-family:var(--font-body);
+  box-shadow:0 4px 16px #7C3AED44;
+}
+.sheet-save-teal{
+  background:linear-gradient(135deg,#10B981,#059669);
+  box-shadow:0 4px 16px #10B98144;
+}
+.sheet-delete{
+  display:block;width:calc(100% - 28px);margin:6px 14px 24px;
+  background:var(--red-dim);border:1px solid #F0404044;
+  border-radius:11px;color:var(--red);font-size:14px;font-weight:700;
+  padding:12px;cursor:pointer;font-family:var(--font-body);
+}
 
-/* ── Feedback ─────────────────────────────────────────────────── */
-.toast{position:fixed;bottom:calc(var(--nav-h) + 16px);left:50%;transform:translateX(-50%);background:#1A1A2E;border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;z-index:300;pointer-events:none;transition:opacity .3s;box-shadow:0 4px 20px #000A}
+/* ── Feedback ────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;
+  transform:translateX(-50%);
+  background:var(--surf2);border:1px solid var(--border2);
+  border-radius:11px;padding:11px 20px;
+  font-size:14px;font-weight:600;z-index:300;
+  pointer-events:none;transition:opacity .3s;
+  box-shadow:0 4px 24px #00000066;white-space:nowrap;
+}
 .toast.hidden{opacity:0}
-.empty-state{text-align:center;color:var(--muted);padding:60px 20px;font-size:15px}
-.spinner{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted)}
+
+.empty-state{text-align:center;color:var(--muted);padding:60px 20px;font-size:14px;line-height:1.6}
+.spinner{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:14px}
 .error-msg{color:var(--red);padding:16px;font-size:14px;text-align:center}
 </style>
 </head>
 <body>
 
-<!-- ── Login ────────────────────────────────────────────────── -->
+<!-- ── Login ──────────────────────────────────────────────────── -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo">T3CHS</div>
-    <div class="login-title">TTSD Auth Admin</div>
-    <div class="login-sub">Manage users, sessions, config and known hashes</div>
+    <div class="login-brand">T3CHS</div>
+    <div class="login-title">Admin Panel</div>
+    <div class="login-sub">Manage users, sessions, config, hashes, and TTA account pool</div>
     <div id="login-err" class="login-err" style="display:none"></div>
-    <button id="signin-btn" onclick="signIn()" style="
-      width:100%;background:var(--primary);border:none;border-radius:10px;
-      color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer;
-      margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px;
-      opacity:.5;pointer-events:none;">
+    <button id="signin-btn" onclick="signIn()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -182,63 +465,115 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
   </div>
 </div>
 
-<!-- ── App shell ─────────────────────────────────────────────── -->
+<!-- ── App shell ───────────────────────────────────────────────── -->
 <div id="app" style="display:none">
   <header>
-    <div>
-      <span class="badge">T3CHS</span>
-      <h1 id="page-title">Users</h1>
+    <div class="hdr-left">
+      <div class="hdr-brand">T3CHS</div>
+      <div id="page-title">Users</div>
     </div>
-    <button onclick="signOut()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px">Sign out</button>
+    <div class="hdr-right">
+      <button class="hdr-btn hdr-refresh" onclick="refreshCurrentTab()" title="Refresh">↻</button>
+      <button class="hdr-btn" onclick="signOut()">Sign out</button>
+    </div>
   </header>
 
   <div id="main">
-    <!-- Users screen -->
+    <!-- Users -->
     <div id="screen-users" class="screen active">
       <div class="search-wrap">
         <input class="search-box" type="search" placeholder="Search username or email…" id="user-search" oninput="renderUsers()"/>
       </div>
-      <div id="users-list"></div>
+      <div id="users-list" style="padding-top:8px"></div>
     </div>
 
-    <!-- Sessions screen -->
+    <!-- Sessions -->
     <div id="screen-sessions" class="screen">
-      <div id="sessions-list" style="padding:12px 0"></div>
+      <div id="sessions-list" style="padding:10px 0"></div>
     </div>
 
-    <!-- Config screen -->
+    <!-- Config -->
     <div id="screen-config" class="screen">
       <div id="config-list"></div>
     </div>
 
-    <!-- Hashes screen -->
+    <!-- Hashes -->
     <div id="screen-hashes" class="screen">
-      <div id="hashes-list" style="padding:12px 0"></div>
+      <div id="hashes-list" style="padding:10px 0"></div>
       <button class="fab" onclick="openAddHash()">+ Add Hash</button>
+    </div>
+
+    <!-- TTA -->
+    <div id="screen-tta" class="screen">
+      <!-- Sub-tab bar -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="tta-sub-pool" onclick="switchTtaSub('pool')">Pool</button>
+        <button class="sub-tab" id="tta-sub-log"  onclick="switchTtaSub('log')">Audit Log</button>
+      </div>
+      <!-- Pool view -->
+      <div id="tta-pool-view">
+        <div class="pool-bar">
+          <div class="pool-pill pool-available">
+            <div class="pool-count" id="pool-available">—</div>
+            <div class="pool-label">Available</div>
+          </div>
+          <div class="pool-pill pool-inuse">
+            <div class="pool-count" id="pool-inuse">—</div>
+            <div class="pool-label">In Use</div>
+          </div>
+          <div class="pool-pill pool-locked">
+            <div class="pool-count" id="pool-locked">—</div>
+            <div class="pool-label">Locked</div>
+          </div>
+        </div>
+        <div id="tta-list" style="padding-top:8px"></div>
+        <button class="fab fab-teal" onclick="openAddTta()">+ Add Account</button>
+      </div>
+      <!-- Log view -->
+      <div id="tta-log-view" style="display:none">
+        <div id="tta-log-list" style="padding:10px 0"></div>
+      </div>
     </div>
   </div>
 
   <nav>
     <button class="nav-btn active" onclick="switchTab('users')" id="nav-users">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
       Users
     </button>
     <button class="nav-btn" onclick="switchTab('sessions')" id="nav-sessions">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+      </svg>
       Sessions
     </button>
     <button class="nav-btn" onclick="switchTab('config')" id="nav-config">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
+      </svg>
       Config
     </button>
     <button class="nav-btn" onclick="switchTab('hashes')" id="nav-hashes">
-      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
       Hashes
+    </button>
+    <button class="nav-btn tta-tab" onclick="switchTab('tta')" id="nav-tta">
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      TTA
     </button>
   </nav>
 </div>
 
-<!-- ── User edit sheet ───────────────────────────────────────── -->
+<!-- ── User edit sheet ─────────────────────────────────────────── -->
 <div class="overlay" id="user-sheet" onclick="closeSheet('user-sheet')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
@@ -247,7 +582,7 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       <button class="sheet-close" onclick="closeSheet('user-sheet')">✕</button>
     </div>
 
-    <div class="sheet-section">ACCOUNT</div>
+    <div class="sheet-section">Account</div>
     <div class="sheet-card">
       <div class="field-label">EMAIL</div>
       <input class="field-input" id="edit-email" type="email" placeholder="user@email.com"/>
@@ -256,14 +591,14 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       <textarea class="field-input field-textarea" id="edit-notes" placeholder="Admin notes…"></textarea>
     </div>
 
-    <div class="sheet-section">STATUS</div>
+    <div class="sheet-section">Status</div>
     <div class="pill-row" id="status-pills">
       <button class="pill" data-status="Pending"   onclick="pickStatus('Pending')">Pending</button>
       <button class="pill" data-status="Activated" onclick="pickStatus('Activated')">Activated</button>
       <button class="pill" data-status="Suspended" onclick="pickStatus('Suspended')">Suspended</button>
     </div>
 
-    <div class="sheet-section">ACTIVATION PERIOD</div>
+    <div class="sheet-section">Activation Period</div>
     <div class="sheet-card">
       <div class="field-label">EXPIRES AT</div>
       <input class="field-input" id="edit-expires" type="date"/>
@@ -275,7 +610,7 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       <button class="pill" onclick="setExpiry(2,'years')">+2 yr</button>
     </div>
 
-    <div class="sheet-section">TXFRP CREDITS</div>
+    <div class="sheet-section">TXFRP Credits</div>
     <div class="sheet-card">
       <div class="credit-row">
         <button class="credit-btn" onclick="adjustCredits(-1)">−</button>
@@ -290,7 +625,7 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       </div>
     </div>
 
-    <div class="sheet-section">SECURITY</div>
+    <div class="sheet-section">Security</div>
     <div class="sheet-card">
       <div class="card-row">
         <span class="row-label">Password</span>
@@ -306,14 +641,14 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
       <button class="action-btn action-info"    onclick="clearLockout()">Clear Lockout</button>
     </div>
 
-    <button class="sheet-save"   onclick="saveUser()">Save Changes</button>
+    <button class="sheet-save" onclick="saveUser()">Save Changes</button>
     <button class="sheet-delete" onclick="deleteUser()">Delete User</button>
   </div>
 </div>
 
-<!-- ── Add Hash sheet ────────────────────────────────────────── -->
+<!-- ── Add Hash sheet ──────────────────────────────────────────── -->
 <div class="overlay" id="hash-sheet" onclick="closeSheet('hash-sheet')">
-  <div class="sheet" onclick="event.stopPropagation()" style="max-height:50vh">
+  <div class="sheet" onclick="event.stopPropagation()" style="max-height:55vh">
     <div class="sheet-handle"></div>
     <div style="position:relative">
       <div class="sheet-title">Register Known Hash</div>
@@ -321,52 +656,126 @@ nav{height:var(--nav-h);display:flex;background:var(--surf);border-top:1px solid
     </div>
     <div class="sheet-card" style="margin:8px 14px">
       <div class="field-label">SHA-256 HASH</div>
-      <input class="field-input" id="new-hash" placeholder="sha256:abc… or just the hex" style="font-family:monospace;font-size:12px"/>
+      <input class="field-input field-mono" id="new-hash" placeholder="sha256:abc… or just the hex"/>
       <div class="divider"></div>
       <div class="field-label">VERSION</div>
-      <input class="field-input" id="new-ver" placeholder="3.2.1"/>
+      <input class="field-input" id="new-ver" placeholder="3.3.4"/>
     </div>
     <button class="sheet-save" onclick="addHash()">Register Hash</button>
   </div>
 </div>
 
-<!-- ── Toast ─────────────────────────────────────────────────── -->
+<!-- ── TTA account edit sheet ─────────────────────────────────── -->
+<div class="overlay" id="tta-sheet" onclick="closeSheet('tta-sheet')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div style="position:relative">
+      <div class="sheet-title" id="tta-sheet-title">Edit Account</div>
+      <button class="sheet-close" onclick="closeSheet('tta-sheet')">✕</button>
+    </div>
+
+    <!-- Status badge row -->
+    <div id="tta-status-row" style="padding:0 18px 10px;display:flex;gap:8px;align-items:center">
+      <span id="tta-status-badge" class="status-badge">AVAILABLE</span>
+      <span id="tta-assigned-info" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+
+    <div class="sheet-section">Credentials</div>
+    <div class="sheet-card">
+      <div class="field-label">EMAIL</div>
+      <input class="field-input field-mono" id="tta-email" placeholder="account@example.com"/>
+      <div class="divider"></div>
+      <div class="field-label">PASSWORD</div>
+      <input class="field-input field-mono" id="tta-password" type="text" placeholder="Transsion account password"/>
+    </div>
+
+    <!-- Locked account: status picker + reset shortcut -->
+    <div id="tta-status-section">
+      <div class="sheet-section">Status</div>
+      <div class="pill-row" id="tta-status-pills">
+        <button class="pill" data-tta-status="Available" onclick="pickTtaStatus('Available')">Available</button>
+        <button class="pill" data-tta-status="Locked"    onclick="pickTtaStatus('Locked')">Locked</button>
+      </div>
+    </div>
+
+    <div class="sheet-section">Notes</div>
+    <div class="sheet-card">
+      <textarea class="field-input field-textarea" id="tta-notes" placeholder="Admin notes…" style="padding-top:10px"></textarea>
+    </div>
+
+    <!-- "Mark as Available" shortcut for locked accounts -->
+    <div id="tta-reset-hint" style="display:none">
+      <div style="margin:0 14px 10px;padding:12px 14px;background:var(--teal-dim);border:1px solid var(--teal-glow);border-radius:10px;font-size:12px;color:var(--teal);line-height:1.6">
+        💡 Enter the new password above, then tap <strong>Mark as Available</strong> to re-add this account to the pool.
+      </div>
+    </div>
+
+    <button class="sheet-save sheet-save-teal" id="tta-save-btn" onclick="saveTtaAccount()">Save Account</button>
+    <button class="sheet-delete" id="tta-delete-btn" onclick="deleteTtaAccount()">Remove from Pool</button>
+  </div>
+</div>
+
+<!-- ── Add TTA account sheet ───────────────────────────────────── -->
+<div class="overlay" id="tta-add-sheet" onclick="closeSheet('tta-add-sheet')">
+  <div class="sheet" onclick="event.stopPropagation()" style="max-height:70vh">
+    <div class="sheet-handle"></div>
+    <div style="position:relative">
+      <div class="sheet-title">Add TTA Account</div>
+      <button class="sheet-close" onclick="closeSheet('tta-add-sheet')">✕</button>
+    </div>
+    <div class="sheet-section">Credentials</div>
+    <div class="sheet-card">
+      <div class="field-label">EMAIL</div>
+      <input class="field-input field-mono" id="add-tta-email" type="email" placeholder="account@gmail.com"/>
+      <div class="divider"></div>
+      <div class="field-label">PASSWORD</div>
+      <input class="field-input field-mono" id="add-tta-password" type="text" placeholder="Transsion account password"/>
+    </div>
+    <div class="sheet-section">Notes</div>
+    <div class="sheet-card">
+      <textarea class="field-input field-textarea" id="add-tta-notes" placeholder="Optional notes…" style="padding-top:10px"></textarea>
+    </div>
+    <button class="sheet-save sheet-save-teal" onclick="addTtaAccount()">Add to Pool</button>
+  </div>
+</div>
+
+<!-- ── Toast ───────────────────────────────────────────────────── -->
 <div class="toast hidden" id="toast"></div>
 
-<!-- ── Google Identity Services ──────────────────────────────── -->
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 'use strict';
 
-// ══════════════════════════════════════════════════════════════════
-//  CONFIG — fill these in before deploying
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════
 const CONFIG = {
   WEB_CLIENT_ID:  '618151034869-4agghfdnqrpf8it7cd7igr3v0eitvsuu.apps.googleusercontent.com',
   SPREADSHEET_ID: '1WQz1WOWPOO3uQfuU5Rl9iSYIwkPLouzj-d4O79cTA6E',
   SHEET: {
-    USERS:    'users',
-    SESSIONS: 'sessions',
-    CONFIG:   'TXFRPConfig',
-    HASHES:   'KnownHashes',
+    USERS:        'users',
+    SESSIONS:     'sessions',
+    CONFIG:       'TXFRPConfig',
+    HASHES:       'KnownHashes',
+    TTA_ACCOUNTS: 'tta_accounts',
+    TTA_LOG:      'tta_log',
   },
 };
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 
-// ── State ─────────────────────────────────────────────────────────
 let gToken   = localStorage.getItem('gToken') || '';
 let allUsers = [], allSessions = [], allConfig = [], allHashes = [];
-let editingUser = null;   // user object being edited
-let currentTab  = 'users';
+let allTtaAccounts = [], allTtaLog = [];
+let editingUser = null, editingTta = null;
+let currentTab = 'users', currentTtaSub = 'pool';
 let tokenClient = null;
 
-// ── Google Sign-In init ───────────────────────────────────────────
+// ── Google Sign-In ─────────────────────────────────────────────
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
-  // Check if config is filled in
   if (CONFIG.WEB_CLIENT_ID.includes('YOUR_')) {
-    showLoginErr('⚠ WEB_CLIENT_ID not configured — open index.html and fill in the CONFIG block.');
+    showLoginErr('⚠ WEB_CLIENT_ID not configured — open index.html and fill in CONFIG.');
     return;
   }
 
@@ -374,7 +783,6 @@ window.addEventListener('load', () => {
 
   const initGSI = () => {
     if (!window.google?.accounts?.oauth2) return false;
-
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: CONFIG.WEB_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/spreadsheets',
@@ -383,127 +791,87 @@ window.addEventListener('load', () => {
         gToken = resp.access_token;
         localStorage.setItem('gToken', gToken);
         localStorage.setItem('gTokenExp', String(Date.now() + 55*60*1000));
-        // Schedule silent refresh 54 min from now (before 55 min expiry)
         setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, 54*60*1000);
-        // Only show app if coming from login (not a background refresh)
-        if (!document.getElementById('app') || document.getElementById('app').style.display === 'none' || document.getElementById('app').style.display === '') {
-          showApp();
-          await loadAll();
+        if (!document.getElementById('app') || document.getElementById('app').style.display === 'none') {
+          showApp(); await loadAll();
         }
       },
     });
-
-    // Enable button once GSI is ready
-    btn.style.opacity   = '1';
-    btn.style.pointerEvents = 'auto';
+    btn.classList.add('ready');
     return true;
   };
 
-  // Try immediately, then poll if GSI script hasn't loaded yet
   if (!initGSI()) {
     const poll = setInterval(() => { if (initGSI()) clearInterval(poll); }, 200);
-    setTimeout(() => {
-      clearInterval(poll);
-      if (!tokenClient) showLoginErr('Google Sign-In failed to load. Check your internet connection and refresh.');
-    }, 8000);
+    setTimeout(() => { clearInterval(poll); if (!tokenClient) showLoginErr('Google Sign-In failed to load. Check connection and refresh.'); }, 8000);
   }
 
-  // Restore session — check if token is still fresh
   const storedExp = parseInt(localStorage.getItem('gTokenExp') || '0');
   if (gToken && storedExp > Date.now()) {
-    // Token valid: restore immediately, no popup
-    showApp();
-    loadAll();
-    // Schedule silent refresh 1 min before expiry
+    showApp(); loadAll();
     const msLeft = storedExp - Date.now() - 60000;
     if (msLeft > 0) setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, msLeft);
   } else if (gToken) {
-    // Token stored but expired — try silent re-auth once tokenClient is ready
-    const attemptSilentRefresh = () => {
-      if (tokenClient) {
-        tokenClient.requestAccessToken({ prompt: '' });
-      } else {
-        // tokenClient not ready yet, retry in 500ms
-        setTimeout(attemptSilentRefresh, 500);
-      }
-    };
-    attemptSilentRefresh();
+    const attemptSilent = () => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); else setTimeout(attemptSilent, 500); };
+    attemptSilent();
   }
 });
 
-function showLoginErr(msg) {
-  const el = document.getElementById('login-err');
-  el.textContent = msg; el.style.display = 'block';
-}
-
-function signIn() {
-  if (!tokenClient) { showLoginErr('Google Sign-In not ready yet — please wait a moment and try again.'); return; }
-  tokenClient.requestAccessToken();
-}
+function showLoginErr(msg) { const el = document.getElementById('login-err'); el.textContent = msg; el.style.display = 'block'; }
+function signIn() { if (!tokenClient) { showLoginErr('Google Sign-In not ready yet.'); return; } tokenClient.requestAccessToken(); }
 function signOut() {
   google.accounts.oauth2.revoke(gToken, () => {});
   gToken = ''; localStorage.removeItem('gToken'); localStorage.removeItem('gTokenExp');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
-
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
 }
 
-// ── Sheets API ───────────────────────────────────────────────────
-const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+// ── Sheets API ─────────────────────────────────────────────────
+const BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 
 async function sheetsGet(range) {
-  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}`,
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}`,
     { headers: { Authorization: `Bearer ${gToken}` } });
-  if (r.status === 401) { signOut(); throw new Error('Session expired — please sign in again.'); }
+  if (r.status === 401) { signOut(); throw new Error('Session expired.'); }
   if (!r.ok) throw new Error('Sheets error ' + r.status);
   return (await r.json()).values || [];
 }
-
 async function sheetsPut(range, values) {
-  const r = await fetch(
-    `${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
     { method: 'PUT', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ range, majorDimension: 'ROWS', values }) });
   if (!r.ok) throw new Error('Save failed: ' + r.status);
   return r.json();
 }
-
 async function sheetsAppend(sheet, values) {
-  const r = await fetch(
-    `${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ majorDimension: 'ROWS', values: [values] }) });
   if (!r.ok) throw new Error('Append failed: ' + r.status);
   return r.json();
 }
-
-async function getSheetId(sheetName) {
-  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`,
-    { headers: { Authorization: `Bearer ${gToken}` } });
+async function getSheetId(name) {
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`, { headers: { Authorization: `Bearer ${gToken}` } });
   const j = await r.json();
-  const s = j.sheets.find(s => s.properties.title === sheetName);
+  const s = j.sheets.find(s => s.properties.title === name);
   return s ? s.properties.sheetId : null;
 }
-
 async function deleteRow(sheetName, rowNum) {
   const sheetId = await getSheetId(sheetName);
   if (sheetId === null) throw new Error('Sheet not found: ' + sheetName);
-  const r = await fetch(`${SHEETS_BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
     { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests: [{ deleteDimension: { range: {
-        sheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum
-      }}}]}) });
+      body: JSON.stringify({ requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: rowNum-1, endIndex: rowNum }}}]}) });
   if (!r.ok) throw new Error('Delete failed: ' + r.status);
 }
 
-// ── Data loaders ─────────────────────────────────────────────────
+// ── Data loaders ───────────────────────────────────────────────
 async function loadAll() {
-  await Promise.all([loadUsers(), loadSessions(), loadConfig(), loadHashes()]);
-  updateLastUpdated();
+  await Promise.all([loadUsers(), loadSessions(), loadConfig(), loadHashes(), loadTta()]);
 }
 
 async function loadUsers() {
@@ -511,13 +879,11 @@ async function loadUsers() {
   try {
     const rows = await sheetsGet(`${CONFIG.SHEET.USERS}!A2:K`);
     allUsers = rows.map((r, i) => ({
-      _row: i + 2,
-      username:       r[0] || '', email:          r[1] || '',
-      passwordHash:   r[2] || '', salt:           r[3] || '',
-      txfrpCredits:   +r[4] || 0, status:         r[5] || 'Pending',
-      expiresAt:      r[6] || '', createdAt:      r[7] || '',
-      failedAttempts: +r[8] || 0, lockoutUntil:   r[9] || '',
-      notes:          r[10] || '',
+      _row: i+2, username: r[0]||'', email: r[1]||'',
+      passwordHash: r[2]||'', salt: r[3]||'',
+      txfrpCredits: +r[4]||0, status: r[5]||'Pending',
+      expiresAt: r[6]||'', createdAt: r[7]||'',
+      failedAttempts: +r[8]||0, lockoutUntil: r[9]||'', notes: r[10]||'',
     }));
     renderUsers();
   } catch(e) { setContent('users-list', errMsg(e)); }
@@ -528,10 +894,8 @@ async function loadSessions() {
   try {
     const rows = await sheetsGet(`${CONFIG.SHEET.SESSIONS}!A2:G`);
     allSessions = rows.map((r, i) => ({
-      _row: i + 2,
-      username: r[0]||'', machineId: r[1]||'',
-      loginAt: +r[2]||0,  lastBeat: +r[3]||0,
-      version: r[5]||'',
+      _row: i+2, username: r[0]||'', machineId: r[1]||'',
+      loginAt: +r[2]||0, lastBeat: +r[3]||0, version: r[5]||'',
     }));
     renderSessions();
   } catch(e) { setContent('sessions-list', errMsg(e)); }
@@ -541,7 +905,7 @@ async function loadConfig() {
   setContent('config-list', spinner());
   try {
     const rows = await sheetsGet(`${CONFIG.SHEET.CONFIG}!A2:B`);
-    allConfig = rows.map((r, i) => ({ _row: i + 2, key: r[0]||'', value: r[1]||'' }));
+    allConfig = rows.map((r, i) => ({ _row: i+2, key: r[0]||'', value: r[1]||'' }));
     renderConfig();
   } catch(e) { setContent('config-list', errMsg(e)); }
 }
@@ -550,24 +914,47 @@ async function loadHashes() {
   setContent('hashes-list', spinner());
   try {
     const rows = await sheetsGet(`${CONFIG.SHEET.HASHES}!A2:C`);
-    allHashes = [...rows.map((r, i) => ({ _row: i + 2, hash: r[0]||'', version: r[1]||'', registeredAt: r[2]||'' }))].reverse();
+    allHashes = [...rows.map((r, i) => ({ _row: i+2, hash: r[0]||'', version: r[1]||'', registeredAt: r[2]||'' }))].reverse();
     renderHashes();
   } catch(e) { setContent('hashes-list', errMsg(e)); }
 }
 
-// ── Renderers ─────────────────────────────────────────────────────
+async function loadTta() {
+  setContent('tta-list', spinner());
+  setContent('tta-log-list', spinner());
+  try {
+    const [accRows, logRows] = await Promise.all([
+      sheetsGet(`${CONFIG.SHEET.TTA_ACCOUNTS}!A2:H`),
+      sheetsGet(`${CONFIG.SHEET.TTA_LOG}!A2:E`),
+    ]);
+    allTtaAccounts = accRows.map((r, i) => ({
+      _row: i+2,
+      email:      r[0]||'', password:    r[1]||'',
+      status:     r[2]||'Available', assignedTo: r[3]||'',
+      assignedAt: +r[4]||0, lockedAt: +r[5]||0,
+      usageCount: +r[6]||0, notes: r[7]||'',
+    }));
+    allTtaLog = [...logRows.map((r, i) => ({
+      _row: i+2, username: r[0]||'', email: r[1]||'',
+      event: r[2]||'', timestamp: r[3]||'', notes: r[4]||'',
+    }))].reverse();
+    renderTta();
+  } catch(e) {
+    setContent('tta-list', errMsg(e));
+    setContent('tta-log-list', errMsg(e));
+  }
+}
+
+// ── Renderers ──────────────────────────────────────────────────
 function renderUsers() {
   const q = (document.getElementById('user-search').value || '').toLowerCase();
-  const list = allUsers.filter(u =>
-    u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  const list = allUsers.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
 
-  if (!list.length) { setContent('users-list', `<div class="empty-state">${q ? 'No users match that search.' : 'No users found.'}</div>`); return; }
-
+  if (!list.length) { setContent('users-list', `<div class="empty-state">${q ? 'No users match.' : 'No users found.'}</div>`); return; }
   setContent('users-list', list.map(u => {
     const expired = u.expiresAt && new Date(u.expiresAt) < new Date(new Date().toDateString());
     const statusLabel = u.status === 'Activated' && expired ? 'Expired' : u.status;
     const statusCls   = u.status === 'Activated' && expired ? 'status-Expired' : 'status-' + u.status;
-    const expiryColor = expired ? 'color:var(--red)' : '';
     return `
       <div class="user-card" onclick="openUser(${u._row})">
         <div class="user-head">
@@ -575,20 +962,20 @@ function renderUsers() {
             <span class="user-name">${esc(u.username)}</span>
             <span class="status-badge ${statusCls}">${statusLabel.toUpperCase()}</span>
           </div>
-          <div class="user-email">${esc(u.email) || '—'}</div>
+          <div class="user-email">${esc(u.email)||'—'}</div>
         </div>
         <div class="user-stats">
           <div class="user-stat">
-            <div class="stat-label">EXPIRES</div>
-            <div class="stat-val" style="${expiryColor}">${u.expiresAt || '—'}</div>
+            <div class="stat-label">Expires</div>
+            <div class="stat-val" style="${expired?'color:var(--red)':''}">${u.expiresAt||'—'}</div>
           </div>
           <div class="user-stat">
-            <div class="stat-label">CREDITS</div>
+            <div class="stat-label">Credits</div>
             <div class="stat-val">${u.txfrpCredits}</div>
           </div>
           <div class="user-stat">
-            <div class="stat-label">FAILS</div>
-            <div class="stat-val" style="${u.failedAttempts > 0 ? 'color:var(--amber)' : ''}">${u.failedAttempts || '—'}</div>
+            <div class="stat-label">Fails</div>
+            <div class="stat-val" style="${u.failedAttempts>0?'color:var(--amber)':''}">${u.failedAttempts||'—'}</div>
           </div>
         </div>
       </div>`;
@@ -598,93 +985,73 @@ function renderUsers() {
 function renderSessions() {
   if (!allSessions.length) { setContent('sessions-list', '<div class="empty-state">No active sessions.</div>'); return; }
   setContent('sessions-list', allSessions.map(s => {
-    const minsAgo = s.lastBeat ? (Date.now() - s.lastBeat) / 60000 : Infinity;
-    const beatColor = minsAgo < 5 ? 'var(--green)' : minsAgo < 30 ? 'var(--amber)' : 'var(--red)';
-    const beatLabel = s.lastBeat ? timeSince(s.lastBeat) : '—';
+    const minsAgo = s.lastBeat ? (Date.now()-s.lastBeat)/60000 : Infinity;
+    const beatColor = minsAgo<5?'var(--green)':minsAgo<30?'var(--amber)':'var(--red)';
     const mid = s.machineId;
     return `
       <div class="session-card">
         <div class="session-head">
-          <div>
-            <div class="session-name">${esc(s.username)}</div>
-            <div class="session-ver">v${esc(s.version) || '?'}</div>
-          </div>
-          <button class="kick-btn" onclick="kickSession(${s._row}, '${esc(s.username)}')">KICK</button>
+          <div><div class="session-name">${esc(s.username)}</div><div class="session-ver">v${esc(s.version)||'?'}</div></div>
+          <button class="kick-btn" onclick="kickSession(${s._row},'${esc(s.username)}')">KICK</button>
         </div>
         <div class="session-body">
-          <div class="session-row">
-            <span class="session-key">Machine ID</span>
-            <span class="session-val" style="font-family:monospace;font-size:11px">${mid.slice(0,20)}${mid.length>20?'…':''}</span>
-          </div>
-          <div class="session-row">
-            <span class="session-key">Logged in</span>
-            <span class="session-val">${s.loginAt ? new Date(s.loginAt).toLocaleString() : '—'}</span>
-          </div>
-          <div class="session-row">
-            <span class="session-key">Last heartbeat</span>
-            <span class="session-val" style="color:${beatColor}">${beatLabel}</span>
-          </div>
+          <div class="session-row"><span class="session-key">Machine ID</span><span class="session-val" style="font-family:var(--font-mono);font-size:11px">${mid.slice(0,22)}${mid.length>22?'…':''}</span></div>
+          <div class="session-row"><span class="session-key">Logged in</span><span class="session-val">${s.loginAt?new Date(s.loginAt).toLocaleString():'—'}</span></div>
+          <div class="session-row"><span class="session-key">Last heartbeat</span><span class="session-val" style="color:${beatColor}">${s.lastBeat?timeSince(s.lastBeat):'—'}</span></div>
         </div>
       </div>`;
   }).join(''));
 }
 
 function renderConfig() {
-  const PRICE_KEYS  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
-  const SECRET_KEYS = ['AHToolUsername','AHToolPassword'];
-  const SERVER_KEYS = ['AHToolServer'];
+  const PRICE  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
+  const SECRET = ['AHToolUsername','AHToolPassword'];
+  const SERVER = ['AHToolServer'];
+  const TTA    = ['TtaSessionMinutes','TtaAdminEmail'];
 
   const section = (label, rows) => rows.length ? `
     <div class="section-label">${label}</div>
-    <div class="card">
-      ${rows.map(r => configRow(r, SECRET_KEYS.includes(r.key), PRICE_KEYS.includes(r.key))).join('')}
-    </div>` : '';
-
-  const prices  = allConfig.filter(r => PRICE_KEYS.includes(r.key));
-  const creds   = allConfig.filter(r => SECRET_KEYS.includes(r.key) || SERVER_KEYS.includes(r.key));
-  const other   = allConfig.filter(r => ![...PRICE_KEYS,...SECRET_KEYS,...SERVER_KEYS].includes(r.key));
+    <div class="card">${rows.map(r => configRow(r, SECRET.includes(r.key))).join('')}</div>` : '';
 
   setContent('config-list',
-    section('PRICING (Credits)', prices) +
-    section('AH-TOOL CREDENTIALS', creds) +
-    (other.length ? section('OTHER', other) : '') +
-    '<div style="height:30px"></div>'
+    section('Pricing (Credits)', allConfig.filter(r => PRICE.includes(r.key))) +
+    section('AH-Tool Credentials', allConfig.filter(r => SECRET.includes(r.key) || SERVER.includes(r.key))) +
+    section('TTA Settings', allConfig.filter(r => TTA.includes(r.key))) +
+    section('Other', allConfig.filter(r => ![...PRICE,...SECRET,...SERVER,...TTA].includes(r.key))) +
+    '<div style="height:24px"></div>'
   );
 }
 
-function configRow(r, isSecret, isPrice) {
-  const label = r.key.replace(/([A-Z])/g, ' $1').replace(/^Cost /, '💰 ').replace(/^AH Tool /, '🔑 AH-Tool ').trim();
+function configRow(r, isSecret) {
+  const label = r.key.replace(/([A-Z])/g,' $1').replace(/^Cost /,'').replace(/^AHTool /,'AH-Tool ').replace(/^Tta/,'TTA ').trim();
   return `
     <div class="config-row" id="cfg-row-${r._row}">
       <span class="config-key">${label}</span>
       <div class="config-val-wrap">
         <input class="config-input" id="cfg-${r._row}" value="${esc(r.value)}"
-          type="${isSecret ? 'password' : 'text'}"
-          inputmode="${isPrice ? 'numeric' : 'text'}"
+          type="${isSecret?'password':'text'}"
           onchange="onConfigChange(${r._row})" oninput="onConfigChange(${r._row})"/>
         <button class="save-row-btn" id="cfg-btn-${r._row}" style="display:none" onclick="saveConfigRow(${r._row})">Save</button>
       </div>
     </div>`;
 }
 
-function onConfigChange(rowNum) {
-  const r    = allConfig.find(c => c._row === rowNum);
-  const curr = document.getElementById('cfg-' + rowNum)?.value ?? '';
-  const btn  = document.getElementById('cfg-btn-' + rowNum);
-  if (btn) btn.style.display = curr !== r.value ? 'block' : 'none';
+function onConfigChange(row) {
+  const r = allConfig.find(c => c._row===row);
+  const v = document.getElementById('cfg-'+row)?.value??'';
+  const btn = document.getElementById('cfg-btn-'+row);
+  if (btn) btn.style.display = v!==r.value?'block':'none';
 }
 
-async function saveConfigRow(rowNum) {
-  const r   = allConfig.find(c => c._row === rowNum);
-  const val = document.getElementById('cfg-' + rowNum).value;
-  const btn = document.getElementById('cfg-btn-' + rowNum);
+async function saveConfigRow(row) {
+  const r = allConfig.find(c => c._row===row);
+  const val = document.getElementById('cfg-'+row).value;
+  const btn = document.getElementById('cfg-btn-'+row);
   btn.textContent = '…';
   try {
-    await sheetsPut(`${CONFIG.SHEET.CONFIG}!A${rowNum}:B${rowNum}`, [[r.key, val]]);
-    r.value = val;
-    btn.style.display = 'none';
-    toast('✓ Saved');
-  } catch(e) { toast('✗ ' + e.message, true); btn.textContent = 'Save'; }
+    await sheetsPut(`${CONFIG.SHEET.CONFIG}!A${row}:B${row}`, [[r.key, val]]);
+    r.value = val; btn.style.display = 'none'; toast('✓ Saved');
+  } catch(e) { toast('✗ '+e.message, true); btn.textContent = 'Save'; }
 }
 
 function renderHashes() {
@@ -692,8 +1059,8 @@ function renderHashes() {
   setContent('hashes-list', allHashes.map(h => `
     <div class="hash-card">
       <div class="hash-head">
-        <span class="hash-ver">v${esc(h.version) || '?'}</span>
-        <span class="hash-date">${h.registeredAt ? new Date(h.registeredAt).toLocaleDateString() : '—'}</span>
+        <span class="hash-ver">v${esc(h.version)||'?'}</span>
+        <span class="hash-date">${h.registeredAt?new Date(h.registeredAt).toLocaleDateString():'—'}</span>
         <button class="del-btn" onclick="deleteHash(${h._row})">✕</button>
       </div>
       <div class="hash-body" onclick="copyHash('${esc(h.hash)}')">
@@ -703,179 +1070,311 @@ function renderHashes() {
     </div>`).join(''));
 }
 
-// ── Tab navigation ────────────────────────────────────────────────
+function renderTta() {
+  // Pool counts
+  const av = allTtaAccounts.filter(a=>a.status==='Available').length;
+  const iu = allTtaAccounts.filter(a=>a.status==='InUse').length;
+  const lk = allTtaAccounts.filter(a=>a.status==='Locked').length;
+  document.getElementById('pool-available').textContent = av;
+  document.getElementById('pool-inuse').textContent     = iu;
+  document.getElementById('pool-locked').textContent    = lk;
+
+  // Sort: Locked first (needs attention), then InUse, then Available
+  const sorted = [...allTtaAccounts].sort((a,b) => {
+    const o = {Locked:0,InUse:1,Available:2};
+    return (o[a.status]??3)-(o[b.status]??3);
+  });
+
+  if (!sorted.length) { setContent('tta-list', '<div class="empty-state">No accounts in pool yet.<br>Tap + to add one.</div>'); }
+  else {
+    setContent('tta-list', sorted.map(a => {
+      const isLocked = a.status==='Locked';
+      const lockedAt = a.lockedAt ? new Date(a.lockedAt).toLocaleString() : null;
+      return `
+        <div class="tta-card ${isLocked?'locked-card':''}" onclick="openTta(${a._row})">
+          <div class="tta-card-head">
+            <span class="tta-email">${esc(a.email)}</span>
+            <span class="status-badge status-${a.status}">${a.status.toUpperCase()}</span>
+          </div>
+          <div class="tta-card-meta">
+            ${a.status==='InUse' ? `<span class="tta-assigned">👤 ${esc(a.assignedTo)} · ${a.assignedAt?timeSince(a.assignedAt):'?'}</span>` :
+              a.status==='Locked' ? `<span style="color:var(--red);font-size:11px">🔒 Locked ${lockedAt||''} · pending password reset</span>` :
+              `<span>Usage: <span class="tta-usage">${a.usageCount||0}×</span></span>`}
+            ${a.notes?`<span style="flex:1;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">${esc(a.notes)}</span>`:''}
+          </div>
+        </div>`;
+    }).join(''));
+  }
+
+  // Audit log
+  if (!allTtaLog.length) { setContent('tta-log-list', '<div class="empty-state">No log entries yet.</div>'); }
+  else {
+    setContent('tta-log-list', `<div class="card" style="margin:10px 12px">` +
+      allTtaLog.slice(0,80).map(l => {
+        const isReq = l.event==='Requested';
+        const ts = l.timestamp ? new Date(l.timestamp) : null;
+        const timeStr = ts ? ts.toLocaleDateString()+' '+ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+        return `
+          <div class="log-row">
+            <div class="log-dot ${isReq?'req':'lock'}"></div>
+            <div class="log-info">
+              <div class="log-user">${esc(l.username)} <span style="font-weight:400;color:var(--muted)">· ${esc(l.event)}</span></div>
+              <div class="log-email">${esc(l.email)}</div>
+              ${l.notes?`<div class="log-note">${esc(l.notes)}</div>`:''}
+            </div>
+            <div class="log-time">${timeStr}</div>
+          </div>`;
+      }).join('') + `</div><div style="height:8px"></div>`
+    );
+  }
+}
+
+// ── Tab navigation ─────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-' + tab).classList.add('active');
-  document.getElementById('nav-' + tab).classList.add('active');
-  const titles = { users: 'Users', sessions: 'Sessions', config: 'TXFRP Config', hashes: 'Known Hashes' };
-  document.getElementById('page-title').textContent = titles[tab];
-  refreshCurrentTab(); // refresh data when switching to a tab
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  const titles = { users:'Users', sessions:'Sessions', config:'TXFRP Config', hashes:'Known Hashes', tta:'TTA Pool' };
+  document.getElementById('page-title').textContent = titles[tab]||tab;
+  refreshCurrentTab();
 }
 
-// ── User edit sheet ───────────────────────────────────────────────
-function openUser(rowNum) {
-  const u = allUsers.find(u => u._row === rowNum);
-  if (!u) return;
-  editingUser = { ...u };
+function refreshCurrentTab() {
+  const loaders = { users:loadUsers, sessions:loadSessions, config:loadConfig, hashes:loadHashes, tta:loadTta };
+  loaders[currentTab]?.();
+}
 
-  document.getElementById('sheet-username').textContent = u.username;
-  document.getElementById('edit-email').value    = u.email;
-  document.getElementById('edit-notes').value    = u.notes;
-  document.getElementById('edit-expires').value  = u.expiresAt.replace(/\//g, '-');
-  document.getElementById('edit-credits').textContent = u.txfrpCredits;
-  document.getElementById('pwd-status').textContent = u.passwordHash ? '✓ Set' : '⚠ Not set';
-  document.getElementById('pwd-status').style.color = u.passwordHash ? 'var(--green)' : 'var(--amber)';
-  document.getElementById('fail-count').textContent = u.failedAttempts || '0';
-  document.getElementById('fail-count').style.color = u.failedAttempts > 0 ? 'var(--amber)' : 'var(--muted)';
+function switchTtaSub(sub) {
+  currentTtaSub = sub;
+  document.getElementById('tta-pool-view').style.display = sub==='pool' ? 'block' : 'none';
+  document.getElementById('tta-log-view').style.display  = sub==='log'  ? 'block' : 'none';
+  document.getElementById('tta-sub-pool').classList.toggle('active', sub==='pool');
+  document.getElementById('tta-sub-log').classList.toggle('active',  sub==='log');
+}
+
+// ── User sheet ─────────────────────────────────────────────────
+function openUser(row) {
+  const u = allUsers.find(u=>u._row===row); if (!u) return;
+  editingUser = {...u};
+  document.getElementById('sheet-username').textContent     = u.username;
+  document.getElementById('edit-email').value               = u.email;
+  document.getElementById('edit-notes').value               = u.notes;
+  document.getElementById('edit-expires').value             = u.expiresAt.replace(/\//g,'-');
+  document.getElementById('edit-credits').textContent       = u.txfrpCredits;
+  document.getElementById('pwd-status').textContent         = u.passwordHash?'✓ Set':'⚠ Not set';
+  document.getElementById('pwd-status').style.color         = u.passwordHash?'var(--green)':'var(--amber)';
+  document.getElementById('fail-count').textContent         = u.failedAttempts||'0';
+  document.getElementById('fail-count').style.color         = u.failedAttempts>0?'var(--amber)':'var(--text2)';
   updateStatusPills(u.status);
   openSheet('user-sheet');
 }
-
-function pickStatus(s) { editingUser.status = s; updateStatusPills(s); }
+function pickStatus(s) { editingUser.status=s; updateStatusPills(s); }
 function updateStatusPills(s) {
-  document.querySelectorAll('#status-pills .pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.status === s);
-  });
+  document.querySelectorAll('#status-pills .pill').forEach(p => p.classList.toggle('active', p.dataset.status===s));
 }
-
-function adjustCredits(delta) {
-  const cur = parseInt(document.getElementById('edit-credits').textContent) || 0;
-  const nw  = Math.max(0, cur + delta);
-  document.getElementById('edit-credits').textContent = nw;
+function adjustCredits(d) {
+  const el = document.getElementById('edit-credits');
+  el.textContent = Math.max(0, (parseInt(el.textContent)||0)+d);
 }
-
 function setExpiry(n, unit) {
   const d = new Date();
-  if (unit === 'months') d.setMonth(d.getMonth() + n);
-  else d.setFullYear(d.getFullYear() + n);
-  document.getElementById('edit-expires').value = d.toISOString().slice(0, 10);
-  if (editingUser) editingUser.status = 'Activated';
+  unit==='months' ? d.setMonth(d.getMonth()+n) : d.setFullYear(d.getFullYear()+n);
+  document.getElementById('edit-expires').value = d.toISOString().slice(0,10);
+  if (editingUser) editingUser.status='Activated';
   updateStatusPills('Activated');
 }
-
 async function saveUser() {
   if (!editingUser) return;
-
   const email   = document.getElementById('edit-email').value.trim();
   const notes   = document.getElementById('edit-notes').value;
-  const credits = parseInt(document.getElementById('edit-credits').textContent) || 0;
-  // Normalize date: accept both YYYY/MM/DD and YYYY-MM-DD, store as YYYY-MM-DD
-  const rawDate = document.getElementById('edit-expires').value;
-  const expires = rawDate.replace(/\//g, '-');
-
+  const credits = parseInt(document.getElementById('edit-credits').textContent)||0;
+  const expires = document.getElementById('edit-expires').value.replace(/\//g,'-');
   try {
-    const row = editingUser._row;
-    const sh  = CONFIG.SHEET.USERS;
-
-    // Write each editable field individually — never touch PasswordHash/Salt/CreatedAt
-    await sheetsPut(`${sh}!B${row}`, [[email]]);                    // Email
-    await sheetsPut(`${sh}!E${row}`, [[credits]]);                  // TXFRPCredits
-    await sheetsPut(`${sh}!F${row}`, [[editingUser.status]]);       // Status
-    await sheetsPut(`${sh}!G${row}`, [[expires]]);                  // ExpiresAt
-    await sheetsPut(`${sh}!K${row}`, [[notes]]);                    // Notes
-
-    // Update local cache
-    const idx = allUsers.findIndex(u => u._row === row);
-    if (idx >= 0) Object.assign(allUsers[idx], {
-      email, txfrpCredits: credits,
-      status: editingUser.status, expiresAt: expires, notes,
-    });
-
-    toast('✓ Saved');
-    closeSheet('user-sheet');
-    renderUsers();
-  } catch(e) { toast('✗ ' + e.message, true); }
+    const r = editingUser._row, s = CONFIG.SHEET.USERS;
+    await sheetsPut(`${s}!B${r}`,[[email]]);
+    await sheetsPut(`${s}!E${r}`,[[credits]]);
+    await sheetsPut(`${s}!F${r}`,[[editingUser.status]]);
+    await sheetsPut(`${s}!G${r}`,[[expires]]);
+    await sheetsPut(`${s}!K${r}`,[[notes]]);
+    const idx = allUsers.findIndex(u=>u._row===r);
+    if (idx>=0) Object.assign(allUsers[idx],{email,txfrpCredits:credits,status:editingUser.status,expiresAt:expires,notes});
+    toast('✓ Saved'); closeSheet('user-sheet'); renderUsers();
+  } catch(e) { toast('✗ '+e.message,true); }
 }
-
 async function resetPassword() {
-  if (!confirm(`Reset password for "${editingUser.username}"?\n\nThey will need to set a new password on next login.`)) return;
+  if (!confirm(`Reset password for "${editingUser.username}"?`)) return;
   try {
-    await sheetsPut(`${CONFIG.SHEET.USERS}!C${editingUser._row}:D${editingUser._row}`, [['', '']]);
-    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`, [[0, '']]);
-    editingUser.passwordHash = ''; editingUser.salt = '';
-    editingUser.failedAttempts = 0; editingUser.lockoutUntil = '';
-    document.getElementById('pwd-status').textContent = '⚠ Not set';
-    document.getElementById('pwd-status').style.color = 'var(--amber)';
-    document.getElementById('fail-count').textContent = '0';
+    await sheetsPut(`${CONFIG.SHEET.USERS}!C${editingUser._row}:D${editingUser._row}`,[['','']]);
+    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`,[[0,'']]);
+    editingUser.passwordHash=''; editingUser.salt='';
+    document.getElementById('pwd-status').textContent='⚠ Not set';
+    document.getElementById('pwd-status').style.color='var(--amber)';
+    document.getElementById('fail-count').textContent='0';
     toast('✓ Password reset');
-  } catch(e) { toast('✗ ' + e.message, true); }
+  } catch(e) { toast('✗ '+e.message,true); }
 }
-
 async function clearLockout() {
   try {
-    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`, [[0, '']]);
-    editingUser.failedAttempts = 0;
-    document.getElementById('fail-count').textContent = '0';
-    document.getElementById('fail-count').style.color = 'var(--muted)';
+    await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`,[[0,'']]);
+    editingUser.failedAttempts=0;
+    document.getElementById('fail-count').textContent='0';
+    document.getElementById('fail-count').style.color='var(--text2)';
     toast('✓ Lockout cleared');
-  } catch(e) { toast('✗ ' + e.message, true); }
+  } catch(e) { toast('✗ '+e.message,true); }
 }
-
 async function deleteUser() {
-  if (!confirm(`Permanently delete "${editingUser.username}"? This cannot be undone.`)) return;
+  if (!confirm(`Permanently delete "${editingUser.username}"?`)) return;
   try {
     await deleteRow(CONFIG.SHEET.USERS, editingUser._row);
-    allUsers = allUsers.filter(u => u._row !== editingUser._row);
-    closeSheet('user-sheet');
-    renderUsers();
-    toast('✓ User deleted');
-  } catch(e) { toast('✗ ' + e.message, true); }
+    allUsers = allUsers.filter(u=>u._row!==editingUser._row);
+    closeSheet('user-sheet'); renderUsers(); toast('✓ Deleted');
+  } catch(e) { toast('✗ '+e.message,true); }
 }
 
-// ── Sessions ──────────────────────────────────────────────────────
-async function kickSession(rowNum, username) {
+// ── Sessions ───────────────────────────────────────────────────
+async function kickSession(row, username) {
   if (!confirm(`Force logout "${username}"?`)) return;
   try {
-    await deleteRow(CONFIG.SHEET.SESSIONS, rowNum);
-    allSessions = allSessions.filter(s => s._row !== rowNum);
-    renderSessions();
-    toast('✓ Session kicked');
-  } catch(e) { toast('✗ ' + e.message, true); }
+    await deleteRow(CONFIG.SHEET.SESSIONS, row);
+    allSessions = allSessions.filter(s=>s._row!==row);
+    renderSessions(); toast('✓ Session kicked');
+  } catch(e) { toast('✗ '+e.message,true); }
 }
 
-// ── Hashes ────────────────────────────────────────────────────────
-function openAddHash() {
-  document.getElementById('new-hash').value = '';
-  document.getElementById('new-ver').value  = '';
-  openSheet('hash-sheet');
-}
-
+// ── Hashes ─────────────────────────────────────────────────────
+function openAddHash() { document.getElementById('new-hash').value=''; document.getElementById('new-ver').value=''; openSheet('hash-sheet'); }
 async function addHash() {
   const raw = document.getElementById('new-hash').value.trim();
   const ver = document.getElementById('new-ver').value.trim();
   if (!raw) return;
-  const clean = raw.toLowerCase().replace(/^sha256:/, '');
+  const clean = raw.toLowerCase().replace(/^sha256:/,'');
   try {
     await sheetsAppend(CONFIG.SHEET.HASHES, [clean, ver, new Date().toISOString()]);
-    closeSheet('hash-sheet');
-    toast('✓ Hash registered');
-    await loadHashes();
-  } catch(e) { toast('✗ ' + e.message, true); }
+    closeSheet('hash-sheet'); toast('✓ Hash registered'); await loadHashes();
+  } catch(e) { toast('✗ '+e.message,true); }
 }
-
-async function deleteHash(rowNum) {
+async function deleteHash(row) {
   if (!confirm('Remove this hash?')) return;
+  try { await deleteRow(CONFIG.SHEET.HASHES, row); toast('✓ Removed'); await loadHashes(); }
+  catch(e) { toast('✗ '+e.message,true); }
+}
+function copyHash(hash) { navigator.clipboard.writeText(hash).then(()=>toast('✓ Copied')); }
+
+// ── TTA ────────────────────────────────────────────────────────
+function openTta(row) {
+  const a = allTtaAccounts.find(a=>a._row===row); if (!a) return;
+  editingTta = {...a};
+
+  document.getElementById('tta-sheet-title').textContent = 'Edit Account';
+  document.getElementById('tta-email').value    = a.email;
+  document.getElementById('tta-password').value = a.password;
+  document.getElementById('tta-notes').value    = a.notes;
+
+  const badge = document.getElementById('tta-status-badge');
+  badge.textContent = a.status.toUpperCase();
+  badge.className = 'status-badge status-' + a.status;
+
+  const meta = document.getElementById('tta-assigned-info');
+  if (a.status==='InUse') meta.textContent = `→ ${a.assignedTo}, ${timeSince(a.assignedAt)}`;
+  else if (a.status==='Locked') meta.textContent = a.lockedAt ? `locked ${timeSince(a.lockedAt)}` : '';
+  else meta.textContent = `used ${a.usageCount||0}×`;
+
+  updateTtaStatusPills(a.status);
+
+  // Show/hide reset hint for locked accounts
+  const hint = document.getElementById('tta-reset-hint');
+  hint.style.display = a.status==='Locked' ? 'block' : 'none';
+  const saveBtn = document.getElementById('tta-save-btn');
+  saveBtn.textContent = a.status==='Locked' ? 'Mark as Available' : 'Save Account';
+  saveBtn.className = 'sheet-save sheet-save-teal';
+
+  openSheet('tta-sheet');
+}
+
+function pickTtaStatus(s) {
+  editingTta.status = s;
+  updateTtaStatusPills(s);
+  document.getElementById('tta-reset-hint').style.display = s==='Locked'?'block':'none';
+  document.getElementById('tta-save-btn').textContent = s==='Locked'?'Mark as Available':'Save Account';
+}
+
+function updateTtaStatusPills(s) {
+  document.querySelectorAll('#tta-status-pills .pill').forEach(p => {
+    p.classList.remove('active','active-teal');
+    if (p.dataset.ttaStatus===s) p.classList.add(s==='Available'?'active-teal':'active');
+  });
+}
+
+async function saveTtaAccount() {
+  if (!editingTta) return;
+  const email    = document.getElementById('tta-email').value.trim();
+  const password = document.getElementById('tta-password').value;
+  const notes    = document.getElementById('tta-notes').value;
+
+  // If was Locked and now saving → mark as Available (admin has changed the password)
+  const newStatus = editingTta.status==='Locked' ? 'Available' : editingTta.status;
+  const clearLock = editingTta.status==='Locked'; // clear assignment fields
+
   try {
-    await deleteRow(CONFIG.SHEET.HASHES, rowNum);
-    toast('✓ Hash removed');
-    await loadHashes();
-  } catch(e) { toast('✗ ' + e.message, true); }
+    const r = editingTta._row;
+    const s = CONFIG.SHEET.TTA_ACCOUNTS;
+    await sheetsPut(`${s}!A${r}:H${r}`, [[
+      email, password, newStatus,
+      clearLock ? '' : editingTta.assignedTo,
+      clearLock ? '' : (editingTta.assignedAt||''),
+      clearLock ? '' : (editingTta.lockedAt||''),
+      editingTta.usageCount||0,
+      notes,
+    ]]);
+    const idx = allTtaAccounts.findIndex(a=>a._row===r);
+    if (idx>=0) Object.assign(allTtaAccounts[idx],{email,password,status:newStatus,notes,
+      assignedTo: clearLock?'':editingTta.assignedTo,
+      assignedAt: clearLock?0:editingTta.assignedAt,
+      lockedAt:   clearLock?0:editingTta.lockedAt,
+    });
+    toast(clearLock ? '✓ Account reset — back in pool' : '✓ Saved');
+    closeSheet('tta-sheet');
+    renderTta();
+  } catch(e) { toast('✗ '+e.message,true); }
 }
 
-function copyHash(hash) {
-  navigator.clipboard.writeText(hash).then(() => toast('✓ Copied to clipboard'));
+async function deleteTtaAccount() {
+  const email = editingTta?.email || 'this account';
+  if (!confirm(`Remove "${email}" from the pool?`)) return;
+  try {
+    await deleteRow(CONFIG.SHEET.TTA_ACCOUNTS, editingTta._row);
+    allTtaAccounts = allTtaAccounts.filter(a=>a._row!==editingTta._row);
+    closeSheet('tta-sheet'); renderTta(); toast('✓ Removed from pool');
+  } catch(e) { toast('✗ '+e.message,true); }
 }
 
-// ── Sheet overlay helpers ─────────────────────────────────────────
+function openAddTta() {
+  document.getElementById('add-tta-email').value    = '';
+  document.getElementById('add-tta-password').value = '';
+  document.getElementById('add-tta-notes').value    = '';
+  openSheet('tta-add-sheet');
+}
+
+async function addTtaAccount() {
+  const email    = document.getElementById('add-tta-email').value.trim();
+  const password = document.getElementById('add-tta-password').value;
+  const notes    = document.getElementById('add-tta-notes').value;
+  if (!email || !password) { toast('Email and password required', true); return; }
+  try {
+    await sheetsAppend(CONFIG.SHEET.TTA_ACCOUNTS, [email, password, 'Available', '', '', '', 0, notes]);
+    closeSheet('tta-add-sheet'); toast('✓ Account added to pool'); await loadTta();
+  } catch(e) { toast('✗ '+e.message,true); }
+}
+
+// ── Sheet helpers ──────────────────────────────────────────────
 function openSheet(id)  { document.getElementById(id).classList.add('open'); }
 function closeSheet(id) { document.getElementById(id).classList.remove('open'); }
 
-// ── Toast ─────────────────────────────────────────────────────────
+// ── Toast ──────────────────────────────────────────────────────
 let toastTimer;
-function toast(msg, isErr = false) {
+function toast(msg, isErr=false) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.style.color = isErr ? 'var(--red)' : 'var(--green)';
@@ -884,17 +1383,17 @@ function toast(msg, isErr = false) {
   toastTimer = setTimeout(() => el.classList.add('hidden'), 2500);
 }
 
-// ── Utilities ─────────────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────────
 function timeSince(ms) {
-  const m = Math.floor((Date.now() - ms) / 60000);
-  if (m < 1)  return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  const m = Math.floor((Date.now()-ms)/60000);
+  if (m<1)  return 'just now';
+  if (m<60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if (h<24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
 }
-function setContent(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
-function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setContent(id, html) { const el=document.getElementById(id); if (el) el.innerHTML=html; }
+function esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function spinner() { return '<div class="spinner">Loading…</div>'; }
 function errMsg(e) { return `<div class="error-msg">⚠ ${esc(e.message)}</div>`; }
 </script>

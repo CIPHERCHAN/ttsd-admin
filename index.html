@@ -380,6 +380,8 @@ nav::before{
 .log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .log-dot.req{background:var(--teal)}
 .log-dot.lock{background:var(--amber)}
+.log-dot.consume{background:var(--amber)}
+.log-dot.refund{background:var(--teal)}
 .log-info{flex:1;min-width:0}
 .log-user{font-size:13px;font-weight:600}
 .log-email{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -575,7 +577,32 @@ nav::before{
 
     <!-- Sessions -->
     <div id="screen-sessions" class="screen">
-      <div id="sessions-list" style="padding:10px 0"></div>
+      <!-- Sub-tab bar -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="sessions-sub-active" onclick="switchSessionsSub('active')">Active</button>
+        <button class="sub-tab" id="sessions-sub-credit" onclick="switchSessionsSub('credit')">Credit Usage</button>
+      </div>
+      <!-- Active sessions view -->
+      <div id="sessions-active-view">
+        <div id="sessions-list" style="padding:10px 0"></div>
+      </div>
+      <!-- Credit usage view -->
+      <div id="sessions-credit-view" style="display:none">
+        <div class="pool-bar">
+          <div class="pool-pill" style="border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.07)">
+            <div class="pool-count" id="credit-used-total" style="color:var(--amber)">—</div>
+            <div class="pool-label" style="color:var(--amber)">Used</div>
+          </div>
+          <div class="pool-pill pool-available">
+            <div class="pool-count" id="credit-refunded-total">—</div>
+            <div class="pool-label">Refunded</div>
+          </div>
+        </div>
+        <div class="search-wrap">
+          <input class="search-box" type="search" placeholder="Search username or usage…" id="credit-search" oninput="renderCreditUsage()"/>
+        </div>
+        <div id="credit-usage-list" style="padding:10px 0"></div>
+      </div>
     </div>
 
     <!-- Config -->
@@ -849,15 +876,16 @@ const CONFIG = {
     HASHES:       'KnownHashes',
     TTA_ACCOUNTS: 'tta_accounts',
     TTA_LOG:      'tta_log',
+    CREDIT_USAGE: 'credit_usage',
   },
 };
 // ══════════════════════════════════════════════════════════════
 
 let gToken   = localStorage.getItem('gToken') || '';
 let allUsers = [], allSessions = [], allConfig = [], allHashes = [];
-let allTtaAccounts = [], allTtaLog = [];
+let allTtaAccounts = [], allTtaLog = [], allCreditUsage = [];
 let editingUser = null, editingTta = null;
-let currentTab = 'users', currentTtaSub = 'pool';
+let currentTab = 'users', currentTtaSub = 'pool', currentSessionsSub = 'active';
 let tokenClient = null;
 
 // ── Google Sign-In ─────────────────────────────────────────────
@@ -989,6 +1017,17 @@ async function loadSessions() {
     }));
     renderSessions();
   } catch(e) { setContent('sessions-list', errMsg(e)); }
+
+  setContent('credit-usage-list', spinner());
+  try {
+    const rows = await sheetsGet(`${CONFIG.SHEET.CREDIT_USAGE}!A2:G`);
+    allCreditUsage = [...rows.map((r, i) => ({
+      _row: i+2, username: r[0]||'', creditsUsed: +r[1]||0,
+      usage: r[2]||'', dateTime: r[3]||'', balanceAfter: r[4]||'',
+      type: (r[5]||'Consume').trim(), notes: r[6]||'',
+    }))].reverse();
+    renderCreditUsage();
+  } catch(e) { setContent('credit-usage-list', errMsg(e)); }
 }
 
 async function loadConfig() {
@@ -1092,6 +1131,41 @@ function renderSessions() {
         </div>
       </div>`;
   }).join(''));
+}
+
+function renderCreditUsage() {
+  const used     = allCreditUsage.filter(u=>u.type==='Consume').reduce((s,u)=>s+u.creditsUsed,0);
+  const refunded = allCreditUsage.filter(u=>u.type==='Refund').reduce((s,u)=>s+u.creditsUsed,0);
+  document.getElementById('credit-used-total').textContent     = used;
+  document.getElementById('credit-refunded-total').textContent = refunded;
+
+  const q = (document.getElementById('credit-search')?.value || '').toLowerCase();
+  const list = q
+    ? allCreditUsage.filter(u => u.username.toLowerCase().includes(q) || u.usage.toLowerCase().includes(q))
+    : allCreditUsage;
+
+  if (!list.length) {
+    setContent('credit-usage-list', `<div class="empty-state">${q ? 'No entries match.' : 'No credit usage logged yet.'}</div>`);
+    return;
+  }
+  setContent('credit-usage-list', `<div class="card" style="margin:0 12px 10px">` +
+    list.slice(0, 200).map(u => {
+      const isRefund = u.type === 'Refund';
+      const dotClass = isRefund ? 'refund' : 'consume';
+      const sign     = isRefund ? '+' : '−';
+      const amtColor = isRefund ? 'var(--teal)' : 'var(--amber)';
+      return `
+        <div class="log-row">
+          <div class="log-dot ${dotClass}"></div>
+          <div class="log-info">
+            <div class="log-user">${esc(u.username)} <span style="font-weight:600;color:${amtColor}">${sign}${u.creditsUsed}</span> <span style="font-weight:400;color:var(--muted)">· ${esc(u.usage)}</span></div>
+            ${u.notes?`<div class="log-note">${esc(u.notes)}</div>`:''}
+            <div class="log-email">Balance after: ${esc(u.balanceAfter)}</div>
+          </div>
+          <div class="log-time">${esc(u.dateTime)}</div>
+        </div>`;
+    }).join('') + `</div>`
+  );
 }
 
 function renderConfig() {
@@ -1247,6 +1321,14 @@ function switchTab(tab) {
 function refreshCurrentTab() {
   const loaders = { users:loadUsers, sessions:loadSessions, config:loadConfig, hashes:loadHashes, tta:loadTta };
   loaders[currentTab]?.();
+}
+
+function switchSessionsSub(sub) {
+  currentSessionsSub = sub;
+  document.getElementById('sessions-active-view').style.display = sub==='active' ? 'block' : 'none';
+  document.getElementById('sessions-credit-view').style.display = sub==='credit' ? 'block' : 'none';
+  document.getElementById('sessions-sub-active').classList.toggle('active', sub==='active');
+  document.getElementById('sessions-sub-credit').classList.toggle('active', sub==='credit');
 }
 
 function switchTtaSub(sub) {

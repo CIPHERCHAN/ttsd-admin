@@ -592,7 +592,7 @@ nav::before{
       Sign in with Google
     </button>
     <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
-    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R3 · Photo Verify</div>
+    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R4 · OCR Fix</div>
   </div>
 </div>
 
@@ -1647,6 +1647,21 @@ function hasNumberToken(text, num) {
   const re = new RegExp('(^|[^0-9])' + num + '([^0-9]|$)');
   return re.test(text);
 }
+// Finds every code-shaped run of text and returns candidates most-likely-first.
+// Primary form requires the literal dashes we actually print ("A1F9-2C7B-D301-88EE"),
+// so it can't accidentally bridge across unrelated numbers on other lines (the
+// previous version allowed \s as a separator, which let it splice together
+// "2026" from the "Valid Until" date with the real barcode digits and then
+// stop early, silently dropping the last group). A looser fallback catches
+// cases where OCR misreads a dash as a space or drops it.
+function extractCandidateCodes(text) {
+  const strict = text.match(/\b[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}\b/g) || [];
+  const loose  = text.match(/\b[0-9A-F]{4}[ -]{0,2}[0-9A-F]{4}[ -]{0,2}[0-9A-F]{4}[ -]{0,2}[0-9A-F]{4}\b/g) || [];
+  const seen = new Set();
+  return [...strict, ...loose]
+    .map(c => c.replace(/[^0-9A-F]/g, ''))
+    .filter(c => c.length === 16 && (seen.has(c) ? false : (seen.add(c), true)));
+}
 async function verifyReceiptImage(file) {
   if (!file) return;
   const statusEl = document.getElementById('verify-image-status');
@@ -1654,15 +1669,20 @@ async function verifyReceiptImage(file) {
   try {
     const { data: { text } } = await Tesseract.recognize(file, 'eng');
     const upperText = text.toUpperCase();
-    const codeMatch = upperText.match(/([0-9A-F]{4}[\s-]?){3}[0-9A-F]{4}/);
-    if (!codeMatch) {
+    const candidates = extractCandidateCodes(upperText);
+    if (!candidates.length) {
       statusEl.innerHTML = `<span style="color:var(--red)">✗ Could not find a verification code in this image. Ask for a clearer photo, or type the code manually above.</span>`;
       return;
     }
-    const code = codeMatch[0].replace(/[^0-9A-F]/g,'');
-    const record = allReceipts.find(r => (r.code||'').toUpperCase() === code);
+    // Prefer whichever candidate actually exists in the log — this protects
+    // against OCR still producing a garbage candidate alongside the real one.
+    let record = null, code = '';
+    for (const c of candidates) {
+      const found = allReceipts.find(r => (r.code||'').toUpperCase() === c);
+      if (found) { record = found; code = c; break; }
+    }
     if (!record) {
-      statusEl.innerHTML = `<span style="color:var(--red)">✗ Code ${esc(formatCode(code))} was not found in the receipts log. This receipt may be forged.</span>`;
+      statusEl.innerHTML = `<span style="color:var(--red)">✗ Code ${esc(formatCode(candidates[0]))} was not found in the receipts log. This receipt may be forged.</span>`;
       return;
     }
 

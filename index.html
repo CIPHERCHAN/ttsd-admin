@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <style>
 /* ── Design tokens ───────────────────────────────────────────── */
 :root{
@@ -591,7 +592,7 @@ nav::before{
       Sign in with Google
     </button>
     <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
-    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R2 · Receipts + Barcode</div>
+    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R3 · Photo Verify</div>
   </div>
 </div>
 
@@ -632,6 +633,13 @@ nav::before{
             <button class="save-row-btn" style="white-space:nowrap" onclick="verifyReceiptCode()">Check</button>
           </div>
           <div id="verify-result" style="padding:0 14px 12px;font-size:12px;font-weight:600"></div>
+          <div class="divider"></div>
+          <div class="field-label">OR SCAN A RECEIPT PHOTO</div>
+          <div style="padding:0 14px 14px">
+            <input type="file" accept="image/*" id="verify-image-input" style="display:none" onchange="verifyReceiptImage(this.files[0])"/>
+            <button class="save-row-btn" style="width:100%" onclick="document.getElementById('verify-image-input').click()">📷 Upload &amp; Check Receipt Photo</button>
+            <div id="verify-image-status" style="margin-top:10px;font-size:12px;line-height:1.6"></div>
+          </div>
         </div>
         <div id="receipts-list" style="padding:10px 0"></div>
       </div>
@@ -1620,6 +1628,69 @@ function verifyReceiptCode() {
     resultEl.innerHTML = `<span style="color:var(--teal)">✓ MATCH — ${esc(match.username)} · ${esc(match.type)} · ${esc(match.dateTime)}</span>`;
   } else {
     resultEl.innerHTML = `<span style="color:var(--red)">✗ NOT FOUND — no receipt in the log has this code. Treat as unverified / possibly edited.</span>`;
+  }
+}
+
+// ── Image-based verification ────────────────────────────────────
+// Reads the code AND the visible fields off an uploaded photo via OCR, then
+// checks each field against what the log actually says for that code. This
+// catches the case a plain code-lookup misses: someone editing the visible
+// numbers (e.g. "+5" -> "+10") on a screenshot while the barcode pixels
+// (and the printed code) stay untouched — the code alone would still "match",
+// but the numbers next to it won't match the log.
+function hasToken(text, str) {
+  if (!str) return true;
+  return text.toUpperCase().includes(String(str).toUpperCase());
+}
+function hasNumberToken(text, num) {
+  if (num === '' || num == null) return true;
+  const re = new RegExp('(^|[^0-9])' + num + '([^0-9]|$)');
+  return re.test(text);
+}
+async function verifyReceiptImage(file) {
+  if (!file) return;
+  const statusEl = document.getElementById('verify-image-status');
+  statusEl.innerHTML = `<span style="color:var(--muted)">⏳ Reading receipt image… (first scan downloads the OCR engine, can take 5–15s)</span>`;
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'eng');
+    const upperText = text.toUpperCase();
+    const codeMatch = upperText.match(/([0-9A-F]{4}[\s-]?){3}[0-9A-F]{4}/);
+    if (!codeMatch) {
+      statusEl.innerHTML = `<span style="color:var(--red)">✗ Could not find a verification code in this image. Ask for a clearer photo, or type the code manually above.</span>`;
+      return;
+    }
+    const code = codeMatch[0].replace(/[^0-9A-F]/g,'');
+    const record = allReceipts.find(r => (r.code||'').toUpperCase() === code);
+    if (!record) {
+      statusEl.innerHTML = `<span style="color:var(--red)">✗ Code ${esc(formatCode(code))} was not found in the receipts log. This receipt may be forged.</span>`;
+      return;
+    }
+
+    const checks = [];
+    checks.push({ label: 'Username', ok: hasToken(upperText, record.username) });
+    if (record.type === 'Activation' || record.type === 'Both') {
+      checks.push({ label: 'Status: Activated', ok: upperText.includes('ACTIVAT') });
+      checks.push({ label: `Duration (${record.duration})`, ok: hasToken(upperText, record.duration) });
+      checks.push({ label: `Valid Until (${record.expiresAt})`, ok: hasToken(upperText, record.expiresAt) });
+    }
+    if (record.type === 'Credits' || record.type === 'Both') {
+      checks.push({ label: `Credits Added (+${record.creditsAdded})`, ok: hasNumberToken(upperText, record.creditsAdded) });
+      checks.push({ label: `New Balance (${record.newBalance})`, ok: hasNumberToken(upperText, record.newBalance) });
+    }
+    const allOk = checks.every(c => c.ok);
+    const rowsHtml = checks.map(c => `
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0">
+        <span style="color:var(--muted)">${esc(c.label)}</span>
+        <span style="color:${c.ok?'var(--teal)':'var(--red)'};font-weight:700;white-space:nowrap">${c.ok?'✓ match':'✗ mismatch'}</span>
+      </div>`).join('');
+    statusEl.innerHTML = `
+      <div style="color:${allOk?'var(--teal)':'var(--red)'};font-weight:700;margin-bottom:6px">${allOk?'✓ VERIFIED — matches the log':'⚠ MISMATCH — this photo does not fully match the log'}</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:6px">Code ${esc(formatCode(code))} · ${esc(record.username)} · ${esc(record.dateTime)}</div>
+      ${rowsHtml}
+      <div style="font-size:10px;color:var(--dim);margin-top:8px">OCR-based — double check manually if a result looks borderline.</div>
+    `;
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">✗ Could not scan image: ${esc(e.message)}</span>`;
   }
 }
 

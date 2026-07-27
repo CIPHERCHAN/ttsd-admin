@@ -1076,13 +1076,28 @@ async function getSheetId(name) {
 }
 async function ensureSheetExists(name, headerRow) {
   const id = await getSheetId(name);
-  if (id !== null) return;
-  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
-    { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: name } } }] }) });
-  if (!r.ok) throw new Error('Could not create sheet: ' + name);
-  const lastCol = String.fromCharCode(64 + headerRow.length);
-  await sheetsPut(`${name}!A1:${lastCol}1`, [headerRow]);
+  if (id === null) {
+    const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
+      { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ addSheet: { properties: { title: name } } }] }) });
+    if (!r.ok) throw new Error('Could not create sheet: ' + name);
+    const lastCol = String.fromCharCode(64 + headerRow.length);
+    await sheetsPut(`${name}!A1:${lastCol}1`, [headerRow]);
+    return;
+  }
+  // Sheet already exists — if the schema grew (new columns appended at the
+  // end since this sheet was first created), fill in the missing trailing
+  // header cells so old sheets pick up new columns without losing data.
+  try {
+    const lastCol = String.fromCharCode(64 + headerRow.length);
+    const existingRows = await sheetsGet(`${name}!A1:${lastCol}1`);
+    const existing = existingRows[0] || [];
+    if (existing.length < headerRow.length) {
+      const startCol = String.fromCharCode(65 + existing.length);
+      const missing = headerRow.slice(existing.length);
+      await sheetsPut(`${name}!${startCol}1:${lastCol}1`, [missing]);
+    }
+  } catch(e) { console.warn('Header check failed for ' + name + ':', e.message); }
 }
 async function deleteRow(sheetName, rowNum) {
   const sheetId = await getSheetId(sheetName);
@@ -1118,7 +1133,7 @@ async function loadUsers() {
     allReceipts = [...rows.map((r, i) => ({
       _row: i+2, username: r[0]||'', type: r[1]||'', dateTime: r[2]||'',
       duration: r[3]||'', expiresAt: r[4]||'', creditsAdded: +r[5]||0,
-      newBalance: r[6]||'', code: r[7]||'', notes: r[8]||'',
+      newBalance: r[6]||'', notes: r[7]||'', code: r[8]||'',
     }))].reverse();
     renderReceiptsList();
   } catch(e) { setContent('receipts-list', errMsg(e)); }
@@ -1626,10 +1641,10 @@ async function maybeIssueReceipt(username, original, updated) {
   try {
     const codeSeed = [username, type, dateTimeStore, duration, expiresDisplay, creditsChanged?creditsAdded:'', updated.credits].join('|');
     code = await computeReceiptCode(codeSeed);
-    await ensureSheetExists(CONFIG.SHEET.RECEIPTS, ['Username','Type','DateTime','Duration','ExpiresAt','CreditsAdded','NewBalance','Code','Notes']);
+    await ensureSheetExists(CONFIG.SHEET.RECEIPTS, ['Username','Type','DateTime','Duration','ExpiresAt','CreditsAdded','NewBalance','Notes','Code']);
     await sheetsAppend(CONFIG.SHEET.RECEIPTS, [
-      username, type, dateTimeStore, duration, expiresDisplay,
-      creditsChanged ? creditsAdded : '', updated.credits, code, '',
+      username, type, "'" + dateTimeStore, duration, expiresDisplay ? "'" + expiresDisplay : '',
+      creditsChanged ? creditsAdded : '', updated.credits, '', code,
     ]);
     await loadUsers();
   } catch(e) { console.warn('Receipt log failed:', e.message); }

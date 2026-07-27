@@ -594,7 +594,7 @@ nav::before{
       Sign in with Google
     </button>
     <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
-    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R5 · Real Barcode</div>
+    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R6 · Barcode Auto-Crop</div>
   </div>
 </div>
 
@@ -1644,22 +1644,91 @@ function hasNumberToken(text, num) {
 // Decodes the actual Code128 barcode from an uploaded photo — exact, not a
 // guess, since Code128 has a built-in checksum (unlike reading printed
 // digits with OCR, which can misread a character like E vs F).
-async function decodeBarcodeFromImage(imgUrl) {
+//
+// A single plain pass over the whole photo is unreliable because the
+// barcode is only a small part of a much larger, busy image. Since we
+// control the receipt's design, the barcode always sits on the one pure
+// white rectangle on an otherwise dark card — so we auto-detect and crop
+// tightly to that region first, which scans far more reliably, then fall
+// back to scanning the full image (with a more thorough search enabled)
+// if no white region was found or the crop didn't decode.
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { resolve(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+function findWhiteRect(ctx, width, height) {
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const isWhite = (x, y) => {
+    const i = (y * width + x) * 4;
+    return data[i] > 230 && data[i+1] > 230 && data[i+2] > 230;
+  };
+  const step = Math.max(1, Math.floor(width / 300));
+  let top = -1, bottom = -1, gap = 0;
+  for (let y = 0; y < height; y++) {
+    let count = 0, samples = 0;
+    for (let x = 0; x < width; x += step) { samples++; if (isWhite(x, y)) count++; }
+    if (count / samples > 0.5) { if (top === -1) top = y; bottom = y; gap = 0; }
+    else if (top !== -1 && ++gap > 15) break;
+  }
+  if (top === -1) return null;
+  const midY = Math.floor((top + bottom) / 2);
+  let left = -1, right = -1;
+  for (let x = 0; x < width; x++) { if (isWhite(x, midY)) { if (left === -1) left = x; right = x; } }
+  if (left === -1) return null;
+  const pad = 8;
+  return {
+    x: Math.max(0, left - pad), y: Math.max(0, top - pad),
+    w: Math.min(width - left, right - left + pad*2),
+    h: Math.min(height - top, bottom - top + pad*2),
+  };
+}
+async function decodeBarcodeFromImage(file) {
   const hints = new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
   const reader = new ZXing.BrowserMultiFormatReader(hints);
-  const result = await reader.decodeFromImageUrl(imgUrl);
-  return result.getText();
+
+  // Attempt 1: crop to the white barcode chip and decode just that.
+  try {
+    const img = await loadImageFromFile(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const rect = findWhiteRect(ctx, canvas.width, canvas.height);
+    if (rect && rect.w > 30 && rect.h > 10) {
+      const crop = document.createElement('canvas');
+      crop.width = rect.w; crop.height = rect.h;
+      crop.getContext('2d').drawImage(canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+      try {
+        const result = await reader.decodeFromImageUrl(crop.toDataURL('image/png'));
+        return result.getText();
+      } catch(_) { /* fall through to full-image attempt */ }
+    }
+  } catch(_) { /* fall through */ }
+
+  // Attempt 2: scan the full original image as a fallback.
+  const fullUrl = URL.createObjectURL(file);
+  try {
+    const result = await reader.decodeFromImageUrl(fullUrl);
+    return result.getText();
+  } finally {
+    URL.revokeObjectURL(fullUrl);
+  }
 }
 async function verifyReceiptImage(file) {
   if (!file) return;
   const statusEl = document.getElementById('verify-image-status');
   statusEl.innerHTML = `<span style="color:var(--muted)">⏳ Scanning barcode &amp; reading receipt…</span>`;
-  const imgUrl = URL.createObjectURL(file);
   try {
     const [ocrOutcome, barcodeOutcome] = await Promise.allSettled([
       Tesseract.recognize(file, 'eng'),
-      decodeBarcodeFromImage(imgUrl),
+      decodeBarcodeFromImage(file),
     ]);
     const upperText = ocrOutcome.status === 'fulfilled' ? ocrOutcome.value.data.text.toUpperCase() : '';
     const code = barcodeOutcome.status === 'fulfilled' ? String(barcodeOutcome.value||'').toUpperCase().replace(/[^0-9A-F]/g,'') : '';
@@ -1699,8 +1768,6 @@ async function verifyReceiptImage(file) {
     `;
   } catch(e) {
     statusEl.innerHTML = `<span style="color:var(--red)">✗ Could not scan image: ${esc(e.message)}</span>`;
-  } finally {
-    URL.revokeObjectURL(imgUrl);
   }
 }
 

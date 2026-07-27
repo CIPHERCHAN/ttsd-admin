@@ -439,7 +439,8 @@ nav::before{
 .receipt-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;gap:10px}
 .receipt-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);font-family:var(--font-mono);text-transform:uppercase;flex-shrink:0}
 .receipt-value{font-size:14px;font-weight:700;color:var(--text);text-align:right}
-.receipt-barcode{height:32px;margin:16px 22px 2px;background-image:repeating-linear-gradient(90deg,var(--text2) 0 2px,transparent 2px 5px);opacity:.45}
+.receipt-barcode{height:32px;margin:16px 22px 6px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.receipt-code{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--text2);text-align:center;margin-bottom:2px}
 .receipt-footer{text-align:center;padding:8px 20px 26px}
 .receipt-thanks{font-size:11px;color:var(--muted);line-height:1.6}
 .receipt-id{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:8px;letter-spacing:1px}
@@ -623,6 +624,14 @@ nav::before{
       </div>
       <!-- Receipts view -->
       <div id="users-receipts-view" style="display:none">
+        <div class="sheet-card" style="margin:10px 12px">
+          <div class="field-label">VERIFY RECEIPT CODE</div>
+          <div style="display:flex;gap:8px;align-items:center;padding:0 14px 12px">
+            <input class="field-input" id="verify-code-input" placeholder="A1F9-2C7B-D301-88EE" style="padding:8px 0;font-family:var(--font-mono);letter-spacing:1px" oninput="verifyReceiptCode()"/>
+            <button class="save-row-btn" style="white-space:nowrap" onclick="verifyReceiptCode()">Check</button>
+          </div>
+          <div id="verify-result" style="padding:0 14px 12px;font-size:12px;font-weight:600"></div>
+        </div>
         <div id="receipts-list" style="padding:10px 0"></div>
       </div>
     </div>
@@ -927,7 +936,8 @@ nav::before{
         <div class="receipt-divider"></div>
         <div class="receipt-body" id="receipt-body"><!-- filled by JS --></div>
         <div class="receipt-divider"></div>
-        <div class="receipt-barcode"></div>
+        <div class="receipt-barcode" id="receipt-barcode"></div>
+        <div class="receipt-code" id="receipt-code-text"></div>
         <div class="receipt-footer">
           <div class="receipt-thanks">Thank you for choosing T3CHS.<br>Keep this receipt for your records.</div>
           <div class="receipt-id" id="receipt-id"></div>
@@ -1104,11 +1114,11 @@ async function loadUsers() {
 
   setContent('receipts-list', spinner());
   try {
-    const rows = await sheetsGet(`${CONFIG.SHEET.RECEIPTS}!A2:H`);
+    const rows = await sheetsGet(`${CONFIG.SHEET.RECEIPTS}!A2:I`);
     allReceipts = [...rows.map((r, i) => ({
       _row: i+2, username: r[0]||'', type: r[1]||'', dateTime: r[2]||'',
       duration: r[3]||'', expiresAt: r[4]||'', creditsAdded: +r[5]||0,
-      newBalance: r[6]||'', notes: r[7]||'',
+      newBalance: r[6]||'', code: r[7]||'', notes: r[8]||'',
     }))].reverse();
     renderReceiptsList();
   } catch(e) { setContent('receipts-list', errMsg(e)); }
@@ -1303,6 +1313,7 @@ function renderReceiptsList() {
           <div class="log-dot" style="background:${dotColor}"></div>
           <div class="log-info">
             <div class="log-user">${esc(rc.username)} <span style="font-weight:400;color:var(--muted)">· ${esc(summary)}</span></div>
+            ${rc.code ? `<div class="log-note" style="font-family:var(--font-mono);letter-spacing:.5px">${esc(formatCode(rc.code))}</div>` : ''}
           </div>
           <div class="log-time">${esc(rc.dateTime)}</div>
         </div>`;
@@ -1504,7 +1515,7 @@ function openUser(row) {
   document.getElementById('sheet-username').textContent     = u.username;
   document.getElementById('edit-email').value               = u.email;
   document.getElementById('edit-notes').value               = u.notes;
-  document.getElementById('edit-expires').value             = u.expiresAt.replace(/\//g,'-');
+  document.getElementById('edit-expires').value             = toISODate(u.expiresAt);
   document.getElementById('edit-credits').textContent       = u.txfrpCredits;
   document.getElementById('pwd-status').textContent         = u.passwordHash?'✓ Set':'⚠ Not set';
   document.getElementById('pwd-status').style.color         = u.passwordHash?'var(--green)':'var(--amber)';
@@ -1529,6 +1540,16 @@ function setExpiry(n, unit) {
   updateStatusPills('Activated');
 }
 // ── Receipts ───────────────────────────────────────────────────
+function toISODate(v) {
+  if (!v) return '';
+  v = String(v).trim();
+  let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  const d = new Date(v);
+  return isNaN(d) ? '' : d.toISOString().slice(0,10);
+}
 function formatSheetDateTime(d) {
   let h = d.getHours(); const ampm = h>=12?'PM':'AM'; h = h%12; if (h===0) h=12;
   const mm = String(d.getMinutes()).padStart(2,'0');
@@ -1548,10 +1569,48 @@ function niceDate(dateStr) {
   return new Date(dateStr+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
 }
 
+// ── Tamper-evident verification code ────────────────────────────
+// Each receipt's data is hashed (with a shared secret) into a 16-hex-char
+// code. That code is stored in the receipts sheet AND printed on the
+// receipt as both a barcode (raw bits) and readable text. If someone edits
+// a screenshot's numbers, the printed code will no longer match anything
+// in the sheet — paste it into "Verify Code" on the Receipts tab to check.
+const RECEIPT_SECRET = 'T3CHS-RCPT-VERIFY-2026-Kx91qP';
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function computeReceiptCode(seed) {
+  const full = await sha256Hex(seed + '|' + RECEIPT_SECRET);
+  return full.slice(0, 16).toUpperCase();
+}
+function formatCode(code) {
+  if (!code) return '';
+  return code.match(/.{1,4}/g).join('-');
+}
+function renderBarcodeBars(code) {
+  if (!code) return '';
+  const bits = code.split('').map(c => parseInt(c,16).toString(2).padStart(4,'0')).join('');
+  return bits.split('').map(b =>
+    `<span style="display:inline-block;height:100%;width:${b==='1'?'3px':'1.5px'};background:${b==='1'?'var(--text)':'var(--text2)'};opacity:${b==='1'?'0.95':'0.4'};margin-right:1px"></span>`
+  ).join('');
+}
+function verifyReceiptCode() {
+  const raw = document.getElementById('verify-code-input').value.trim().toUpperCase().replace(/[^0-9A-F]/g,'');
+  const resultEl = document.getElementById('verify-result');
+  if (!raw) { resultEl.innerHTML = ''; return; }
+  const match = allReceipts.find(r => (r.code||'').toUpperCase() === raw);
+  if (match) {
+    resultEl.innerHTML = `<span style="color:var(--teal)">✓ MATCH — ${esc(match.username)} · ${esc(match.type)} · ${esc(match.dateTime)}</span>`;
+  } else {
+    resultEl.innerHTML = `<span style="color:var(--red)">✗ NOT FOUND — no receipt in the log has this code. Treat as unverified / possibly edited.</span>`;
+  }
+}
+
 async function maybeIssueReceipt(username, original, updated) {
   const wasActivated = original.status === 'Activated';
   const nowActivated  = updated.status === 'Activated';
-  const activationChanged = !!updated.expires && ((!wasActivated && nowActivated) || (nowActivated && updated.expires !== original.expiresAt));
+  const activationChanged = !!updated.expires && ((!wasActivated && nowActivated) || (nowActivated && updated.expires !== toISODate(original.expiresAt)));
   const creditsAdded = updated.credits - (Number(original.txfrpCredits)||0);
   const creditsChanged = creditsAdded > 0;
   if (!activationChanged && !creditsChanged) return;
@@ -1563,19 +1622,21 @@ async function maybeIssueReceipt(username, original, updated) {
   const duration       = activationChanged ? humanDuration(updated.expires) : '';
   const expiresDisplay = activationChanged ? niceDate(updated.expires) : '';
 
-  let savedRow = null;
+  let savedRow = null, code = '';
   try {
-    await ensureSheetExists(CONFIG.SHEET.RECEIPTS, ['Username','Type','DateTime','Duration','ExpiresAt','CreditsAdded','NewBalance','Notes']);
+    const codeSeed = [username, type, dateTimeStore, duration, expiresDisplay, creditsChanged?creditsAdded:'', updated.credits].join('|');
+    code = await computeReceiptCode(codeSeed);
+    await ensureSheetExists(CONFIG.SHEET.RECEIPTS, ['Username','Type','DateTime','Duration','ExpiresAt','CreditsAdded','NewBalance','Code','Notes']);
     await sheetsAppend(CONFIG.SHEET.RECEIPTS, [
       username, type, dateTimeStore, duration, expiresDisplay,
-      creditsChanged ? creditsAdded : '', updated.credits, '',
+      creditsChanged ? creditsAdded : '', updated.credits, code, '',
     ]);
     await loadUsers();
   } catch(e) { console.warn('Receipt log failed:', e.message); }
 
   showReceipt({
     username, type, dateTimeDisplay, duration, expiresDisplay,
-    creditsAdded: creditsChanged ? creditsAdded : 0, newBalance: updated.credits, row: savedRow,
+    creditsAdded: creditsChanged ? creditsAdded : 0, newBalance: updated.credits, row: savedRow, code,
   });
 }
 
@@ -1583,6 +1644,8 @@ let currentReceiptData = null;
 function showReceipt(data) {
   currentReceiptData = data;
   setContent('receipt-body', buildReceiptHTML(data));
+  document.getElementById('receipt-barcode').innerHTML = data.code ? renderBarcodeBars(data.code) : '';
+  document.getElementById('receipt-code-text').textContent = data.code ? formatCode(data.code) : '';
   document.getElementById('receipt-id').textContent = 'RECEIPT · ' + data.username.toUpperCase() + ' · #' + (data.row || Date.now().toString().slice(-6));
   openSheet('receipt-sheet');
 }
@@ -1591,7 +1654,7 @@ function reopenReceipt(row) {
   showReceipt({
     username: rc.username, type: rc.type, dateTimeDisplay: rc.dateTime,
     duration: rc.duration, expiresDisplay: rc.expiresAt,
-    creditsAdded: rc.creditsAdded || 0, newBalance: rc.newBalance, row: rc._row,
+    creditsAdded: rc.creditsAdded || 0, newBalance: rc.newBalance, row: rc._row, code: rc.code,
   });
 }
 function buildReceiptHTML(d) {

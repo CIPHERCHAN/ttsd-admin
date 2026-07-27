@@ -1669,13 +1669,20 @@ function findWhiteRect(ctx, width, height) {
   };
   const step = Math.max(1, Math.floor(width / 300));
   let top = -1, bottom = -1, gap = 0;
-  for (let y = 0; y < height; y++) {
+  // Scan from the BOTTOM of the image upward. The barcode's white chip is
+  // always the last (lowest) solid-white region on the receipt — the footer
+  // below it and the text rows above it all sit on the dark card background.
+  // Scanning bottom-up means we reliably land on the barcode itself no
+  // matter how many receipt-body rows (which vary by receipt type, e.g.
+  // Activation receipts have more rows than Credits receipts) sit above it,
+  // instead of latching onto the logo image near the top of the receipt.
+  for (let y = height - 1; y >= 0; y--) {
     let count = 0, samples = 0;
     for (let x = 0; x < width; x += step) { samples++; if (isWhite(x, y)) count++; }
-    if (count / samples > 0.5) { if (top === -1) top = y; bottom = y; gap = 0; }
-    else if (top !== -1 && ++gap > 15) break;
+    if (count / samples > 0.5) { if (bottom === -1) bottom = y; top = y; gap = 0; }
+    else if (bottom !== -1 && ++gap > 15) break;
   }
-  if (top === -1) return null;
+  if (bottom === -1) return null;
   const midY = Math.floor((top + bottom) / 2);
   let left = -1, right = -1;
   for (let x = 0; x < width; x++) { if (isWhite(x, midY)) { if (left === -1) left = x; right = x; } }

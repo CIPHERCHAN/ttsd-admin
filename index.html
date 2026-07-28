@@ -18,6 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="barcode.js"></script>
 <style>
 /* ── Design tokens ───────────────────────────────────────────── */
 :root{
@@ -443,7 +444,7 @@ nav::before{
 .receipt-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim);font-family:var(--font-mono);text-transform:uppercase;flex-shrink:0}
 .receipt-value{font-size:14px;font-weight:700;color:var(--text);text-align:right}
 .receipt-barcode-wrap{background:#fff;border-radius:8px;margin:16px 30px 4px;padding:10px 8px 6px}
-.receipt-barcode-wrap svg{display:block;width:100%;height:auto}
+.receipt-barcode-wrap canvas{display:block;width:100%;height:auto}
 .receipt-footer{text-align:center;padding:8px 20px 26px}
 .receipt-thanks{font-size:11px;color:var(--muted);line-height:1.6}
 .receipt-id{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:8px;letter-spacing:1px}
@@ -594,7 +595,7 @@ nav::before{
       Sign in with Google
     </button>
     <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
-    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-27-R9 · Simplified Scan</div>
+    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-28-R10 · Canvas Barcode</div>
   </div>
 </div>
 
@@ -946,7 +947,7 @@ nav::before{
         <div class="receipt-divider"></div>
         <div class="receipt-body" id="receipt-body"><!-- filled by JS --></div>
         <div class="receipt-divider"></div>
-        <div class="receipt-barcode-wrap"><svg id="receipt-barcode-svg"></svg></div>
+        <div class="receipt-barcode-wrap"><canvas id="receipt-barcode-canvas"></canvas></div>
         <div class="receipt-footer">
           <div class="receipt-thanks">Thank you for choosing T3CHS.<br>Keep this receipt for your records.</div>
           <div class="receipt-id" id="receipt-id"></div>
@@ -1640,58 +1641,8 @@ function hasNumberToken(text, num) {
   const re = new RegExp('(^|[^0-9])' + num + '([^0-9]|$)');
   return re.test(text);
 }
-// Decodes the actual Code128 barcode from an uploaded photo — exact, not a
-// guess, since Code128 has a built-in checksum (unlike reading printed
-// digits with OCR, which can misread a character like E vs F).
-//
-// Crops to the bottom half of the image, where the barcode always sits in
-// our receipt template (below the data rows, above the footer). This is a
-// deliberately simple, robust reduction of the search area — no per-pixel
-// white-region detection to get subtly wrong — it just trusts our own
-// layout instead of trying to rediscover it from the image.
-function loadImageFromFile(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => resolve(img);
-    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
-    img.src = url;
-  });
-}
-async function decodeBarcodeFromImage(file) {
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  const reader = new ZXing.BrowserMultiFormatReader(hints);
-  const errors = [];
-
-  // Attempt 1: bottom half of the image.
-  try {
-    const img = await loadImageFromFile(file);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-    canvas.getContext('2d').drawImage(img, 0, 0);
-    const cropTop = Math.floor(canvas.height * 0.5);
-    const cropH = canvas.height - cropTop;
-    const crop = document.createElement('canvas');
-    crop.width = canvas.width; crop.height = cropH;
-    crop.getContext('2d').drawImage(canvas, 0, cropTop, canvas.width, cropH, 0, 0, canvas.width, cropH);
-    const result = await reader.decodeFromImageUrl(crop.toDataURL('image/png'));
-    return result.getText();
-  } catch(e) { errors.push('bottom-half: ' + (e && e.message ? e.message : e)); }
-
-  // Attempt 2: the full original image, unmodified.
-  const fullUrl = URL.createObjectURL(file);
-  try {
-    const result = await reader.decodeFromImageUrl(fullUrl);
-    return result.getText();
-  } catch(e) {
-    errors.push('full-image: ' + (e && e.message ? e.message : e));
-    throw new Error(errors.join(' | '));
-  } finally {
-    URL.revokeObjectURL(fullUrl);
-  }
-}
+// Barcode generation (renderReceiptBarcode) and decoding
+// (decodeBarcodeFromImage / loadImageFromFile) now live in barcode.js.
 async function verifyReceiptImage(file) {
   if (!file) return;
   const statusEl = document.getElementById('verify-image-status');
@@ -1785,14 +1736,6 @@ function showReceipt(data) {
   renderReceiptBarcode(data.code);
   document.getElementById('receipt-id').textContent = 'RECEIPT · ' + data.username.toUpperCase() + ' · #' + (data.row || Date.now().toString().slice(-6));
   openSheet('receipt-sheet');
-}
-function renderReceiptBarcode(code) {
-  const svg = document.getElementById('receipt-barcode-svg');
-  svg.innerHTML = '';
-  if (!code) return;
-  try {
-    JsBarcode(svg, code, { format: 'CODE128', displayValue: false, background: '#ffffff', lineColor: '#0a0a12', width: 1.6, height: 40, margin: 6 });
-  } catch(e) { console.warn('Barcode render failed:', e.message); }
 }
 function reopenReceipt(row) {
   const rc = allReceipts.find(x => x._row===row); if (!rc) return;

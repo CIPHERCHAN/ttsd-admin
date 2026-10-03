@@ -884,7 +884,7 @@ nav::before{
       <button class="pill" onclick="setExpiry(2,'years')">+2 yr</button>
     </div>
 
-    <div class="sheet-section">TXFRP Credits</div>
+    <div class="sheet-section">Credits</div>
     <div class="sheet-card">
       <div class="credit-row">
         <button class="credit-btn" onclick="adjustCredits(-1)">−</button>
@@ -1085,7 +1085,7 @@ const CONFIG = {
   SHEET: {
     USERS:        'users',
     SESSIONS:     'sessions',
-    CONFIG:       'TXFRPConfig',
+    CONFIG:       'TXFRPConfig',     // resolved at load time: 'Settings' if that sheet exists (renamed), else this old name
     HASHES:       'KnownHashes',
     TTA_ACCOUNTS: 'tta_accounts',
     TTA_LOG:      'tta_log',
@@ -1206,6 +1206,27 @@ async function loadOptionalSheet(name, range, mapper) {
     return [...rows.map((r, i) => ({ _row: i+2, ...mapper(r) }))].reverse();   // newest first
   } catch(e) { return []; }
 }
+// The config sheet used to be called "TXFRPConfig"; it can now be renamed to "Settings"
+// (script function renameConfigSheet()). Use whichever exists, so the app keeps working either way.
+const LEGACY_CONFIG_SHEET = 'TXFRPConfig', NEW_CONFIG_SHEET = 'Settings';
+let configSheetResolved = false;
+async function resolveConfigSheetName() {
+  if (configSheetResolved) return CONFIG.SHEET.CONFIG;
+  try {
+    CONFIG.SHEET.CONFIG = (await getSheetId(NEW_CONFIG_SHEET)) !== null ? NEW_CONFIG_SHEET : LEGACY_CONFIG_SHEET;
+    configSheetResolved = true;
+  } catch(_) { /* keep the current name; try again next load */ }
+  return CONFIG.SHEET.CONFIG;
+}
+// Deletes several rows of one sheet in ONE request (highest row first so numbers stay valid).
+async function deleteRows(sheetName, rowNums) {
+  const sheetId = await getSheetId(sheetName);
+  if (sheetId === null) throw new Error('Sheet not found: ' + sheetName);
+  const requests = [...rowNums].sort((a,b) => b-a).map(n => ({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: n-1, endIndex: n } } }));
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
+    { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ requests }) });
+  if (!r.ok) throw new Error('Delete failed: ' + r.status);
+}
 async function getSheetId(name) {
   const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`, { headers: { Authorization: `Bearer ${gToken}` } });
   const j = await r.json();
@@ -1319,10 +1340,11 @@ async function loadSessions() {
 async function loadConfig() {
   setContent('config-list', spinner());
   try {
+    await resolveConfigSheetName();
     const rows = await sheetsGet(`${CONFIG.SHEET.CONFIG}!A2:B`);
     allConfig = rows.map((r, i) => ({ _row: i+2, key: r[0]||'', value: r[1]||'' }));
     renderConfig();
-  } catch(e) { setContent('config-list', errMsg(e)); }
+  } catch(e) { configSheetResolved = false; setContent('config-list', errMsg(e)); }
 }
 
 async function loadHashes() {
@@ -1639,7 +1661,7 @@ function renderReceiptsList() {
 }
 
 // ── Settings catalogue ─────────────────────────────────────────
-// label / hint / min for every setting the script reads from TXFRPConfig. "min" doubles as
+// label / hint / min for every setting the script reads from the Settings sheet. "min" doubles as
 // validation for the numeric ones. Keys the sheet doesn't have yet are offered with their
 // default via the "Add missing settings" banner.
 const CFG_META = {
@@ -1667,15 +1689,16 @@ const MAINT_DEFAULT_MSG = 'T3CHS Tool Box is under maintenance. Please try again
 
 function cfgRow(key) { return allConfig.find(c => c.key === key) || null; }
 
+// Config rows that only belonged to the removed TXFRP (Xiaomi FRP) tool — same list as the script's
+// TXFRP_ONLY_CONFIG_KEYS / removeTxfrpLeftovers().
+const TXFRP_ONLY_KEYS = ['AHToolUsername','AHToolPassword','AHToolServer','CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus','CostFRPRemove'];
+
 function renderConfig() {
-  const PRICE  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
   const LOGIN  = ['ToolCoolDown','CostInstantLogin','MaxFailedAttempts','LockoutMinutes','LoginOtpMinutes','OtpMaxAttempts','ResetOtpMinutes','ResetOtpResendSeconds'];
   const TPS    = ['TpsIdleReleaseMinutes','RemoteCommandTtlMinutes'];
-  const SECRET = ['AHToolUsername','AHToolPassword'];
-  const SERVER = ['AHToolServer'];
   const TTA    = ['TtaSessionMinutes','TtaAdminEmail','TtaCooldownHours','TtaRequestCost'];
   const MAINT  = ['MaintenanceMessage','MaintenanceAllowUsers'];
-  const known  = [...PRICE,...LOGIN,...TPS,...SECRET,...SERVER,...TTA,...MAINT];
+  const known  = [...LOGIN,...TPS,...TTA,...MAINT];
 
   const section = (label, keys, rowsOverride) => {
     const rows = rowsOverride || allConfig.filter(r => keys.includes(r.key));
@@ -1683,7 +1706,7 @@ function renderConfig() {
     if (!rowsOverride) rows.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
     return rows.length ? `
       <div class="section-label">${label}</div>
-      <div class="card">${rows.map(r => configRow(r, SECRET.includes(r.key))).join('')}</div>` : '';
+      <div class="card">${rows.map(r => configRow(r, false)).join('')}</div>` : '';
   };
 
   const missing = CFG_DEFAULTS.filter(([k]) => !cfgRow(k));
@@ -1693,17 +1716,33 @@ function renderConfig() {
       <button class="save-row-btn" style="padding:8px 12px" onclick="addMissingConfig()">Add</button>
     </div>` : '';
 
+  const legacy = allConfig.filter(r => TXFRP_ONLY_KEYS.includes(r.key));
+  const legacyBanner = legacy.length ? `
+    <div class="banner-card" style="background:var(--red-dim);border-color:rgba(240,64,64,0.3);color:var(--red)">
+      <div class="banner-text">🧹 <strong>${legacy.length} old TXFRP setting${legacy.length>1?'s':''}</strong> ${legacy.length>1?'are':'is'} still in the sheet (${legacy.map(r=>esc(r.key)).join(', ')}). The Xiaomi FRP tool was removed, so ${legacy.length>1?'they are':'it is'} unused — including the AH-Tool login. Only these rows are removed; nothing else is touched.</div>
+      <button class="save-row-btn" style="padding:8px 12px;background:var(--red)" onclick="removeTxfrpSettings()">Remove</button>
+    </div>` : '';
+
   setContent('config-list',
-    banner +
+    banner + legacyBanner +
     renderMaintenanceCard() +
     section('Login & Security', LOGIN) +
-    section('Pricing (Credits)', PRICE) +
     section('Privacy Screen (TPS)', TPS) +
-    section('AH-Tool Credentials', [...SECRET,...SERVER]) +
     section('TTA Settings', TTA) +
-    section('Other', null, allConfig.filter(r => !known.includes(r.key))) +
+    section('Other', null, allConfig.filter(r => !known.includes(r.key) && !TXFRP_ONLY_KEYS.includes(r.key))) +
     '<div style="height:24px"></div>'
   );
+}
+
+async function removeTxfrpSettings() {
+  const legacy = allConfig.filter(r => TXFRP_ONLY_KEYS.includes(r.key));
+  if (!legacy.length) return;
+  if (!confirm(`Remove ${legacy.length} old TXFRP setting${legacy.length>1?'s':''} from the sheet?\n\n${legacy.map(r=>r.key).join('\n')}\n\nNothing else is changed.`)) return;
+  try {
+    await deleteRows(CONFIG.SHEET.CONFIG, legacy.map(r => r._row));
+    toast(`✓ Removed ${legacy.length} old setting${legacy.length>1?'s':''}`);
+    await loadConfig();
+  } catch(e) { toast('✗ ' + e.message, true); }
 }
 
 // ── Maintenance card: preset messages + allowed-user picker ─────
@@ -1799,7 +1838,7 @@ function maintDeletePreset(i) {
   setContent('maint-presets-box', maintPresetsHTML());
 }
 
-// Writes one TXFRPConfig value, adding the row first if the sheet doesn't have it yet.
+// Writes one Settings value, adding the row first if the sheet doesn't have it yet.
 async function setConfigValue(key, value) {
   const r = cfgRow(key);
   if (r) {

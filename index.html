@@ -579,6 +579,36 @@ nav::before{
 .empty-state{text-align:center;color:var(--muted);padding:60px 20px;font-size:14px;line-height:1.6}
 .spinner{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:14px}
 .error-msg{color:var(--red);padding:16px;font-size:14px;text-align:center}
+
+/* ── Remote control, maintenance, settings (R12) ─────────────── */
+.session-actions{display:flex;gap:8px;padding:0 15px 13px}
+.mini-btn{
+  flex:1;border:1px solid;border-radius:7px;padding:9px 6px;
+  font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;
+  font-family:var(--font-body);
+}
+.mini-warn  {color:var(--amber);background:var(--amber-dim);border-color:rgba(245,158,11,0.3)}
+.mini-danger{color:var(--red);  background:var(--red-dim);  border-color:rgba(240,64,64,0.3)}
+.mini-info  {color:var(--blue); background:var(--blue-dim); border-color:rgba(96,165,250,0.3)}
+.pending-chip{
+  display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  letter-spacing:.4px;padding:2px 8px;border-radius:6px;font-family:var(--font-mono);
+  color:#8B5CF6;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);
+}
+.config-key small{display:block;font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.4;font-weight:400}
+.cfg-note{font-size:11px;color:var(--muted);padding:2px 18px 12px;line-height:1.55}
+.banner-card{
+  margin:12px 12px 4px;padding:12px 14px;border-radius:var(--radius);
+  background:var(--amber-dim);border:1px solid rgba(245,158,11,0.3);
+  color:var(--amber);font-size:12px;line-height:1.5;
+  display:flex;align-items:center;gap:12px;
+}
+.banner-card .banner-text{flex:1}
+.maint-head{display:flex;align-items:center;gap:10px;padding:13px 15px 6px;font-size:14px;font-weight:700}
+.maint-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.maint-dot.on{background:var(--red);box-shadow:0 0 10px rgba(240,64,64,0.8);animation:badgeBlink 1.1s ease-in-out infinite}
+.maint-card.on{border-color:rgba(240,64,64,0.35)}
+.action-btn[disabled]{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -588,7 +618,7 @@ nav::before{
   <div class="login-card">
     <div class="login-brand">T3CHS</div>
     <div class="login-title">Admin Panel</div>
-    <div class="login-sub">Manage users, sessions, config, hashes, and TTA account pool</div>
+    <div class="login-sub">Manage users, sessions, settings, hashes, TTA pool, privacy screens and remote commands</div>
     <div id="login-err" class="login-err" style="display:none"></div>
     <button id="signin-btn" onclick="signIn()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -600,7 +630,7 @@ nav::before{
       Sign in with Google
     </button>
     <div class="login-hint">Sign in with the Google account that owns the TTSD-Auth spreadsheet.</div>
-    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-07-28-R11 · Tolerant Dates</div>
+    <div class="login-hint" style="opacity:.5;margin-top:6px;font-family:var(--font-mono)">BUILD 2026-10-04-R12 · Remote Control + Settings</div>
   </div>
 </div>
 
@@ -658,7 +688,9 @@ nav::before{
       <!-- Sub-tab bar -->
       <div class="sub-tabs">
         <button class="sub-tab active" id="sessions-sub-active" onclick="switchSessionsSub('active')">Active</button>
-        <button class="sub-tab" id="sessions-sub-credit" onclick="switchSessionsSub('credit')">Credit Usage<span class="subtab-badge" id="credit-usage-badge">0</span></button>
+        <button class="sub-tab" id="sessions-sub-credit" onclick="switchSessionsSub('credit')">Credits<span class="subtab-badge" id="credit-usage-badge">0</span></button>
+        <button class="sub-tab" id="sessions-sub-tps" onclick="switchSessionsSub('tps')">Privacy</button>
+        <button class="sub-tab" id="sessions-sub-remote" onclick="switchSessionsSub('remote')">Remote</button>
       </div>
       <!-- Active sessions view -->
       <div id="sessions-active-view">
@@ -680,6 +712,25 @@ nav::before{
           <input class="search-box" type="search" placeholder="Search username or usage…" id="credit-search" oninput="renderCreditUsage()"/>
         </div>
         <div id="credit-usage-list" style="padding:10px 0"></div>
+      </div>
+      <!-- Privacy screen (TPS) activity -->
+      <div id="sessions-tps-view" style="display:none">
+        <div class="pool-bar">
+          <div class="pool-pill" style="border-color:rgba(124,58,237,0.35);background:rgba(124,58,237,0.08)">
+            <div class="pool-count" id="tps-active-count" style="color:var(--primary-lt)">—</div>
+            <div class="pool-label" style="color:var(--primary-lt)">Shield ON</div>
+          </div>
+          <div class="pool-pill pool-available">
+            <div class="pool-count" id="tps-today-count">—</div>
+            <div class="pool-label">Events today</div>
+          </div>
+        </div>
+        <div id="tps-log-list" style="padding:10px 0"></div>
+      </div>
+      <!-- Remote command deliveries -->
+      <div id="sessions-remote-view" style="display:none">
+        <div class="cfg-note" style="padding-top:12px">Every kill-switch command (End Privacy / Close Toolbox) that a toolbox actually picked up. Send commands from a user card or an active session.</div>
+        <div id="remote-log-list" style="padding:4px 0 10px"></div>
       </div>
     </div>
 
@@ -835,6 +886,26 @@ nav::before{
       <button class="action-btn action-warning" onclick="resetPassword()">Reset Password</button>
       <button class="action-btn action-info"    onclick="clearLockout()">Clear Lockout</button>
     </div>
+
+    <div class="action-row">
+      <button class="action-btn action-info" onclick="forgetTrustedPc()">Forget Trusted PC (OTP next login)</button>
+    </div>
+
+    <div class="sheet-section">Remote Control</div>
+    <div class="sheet-card">
+      <div class="card-row"><span class="row-label">Session</span><span id="rc-session" class="row-val"></span></div>
+      <div class="card-row"><span class="row-label">Trusted PC</span><span id="rc-trusted" class="row-val" style="font-family:var(--font-mono);font-size:12px"></span></div>
+      <div class="card-row"><span class="row-label">Privacy screen</span><span id="rc-shield" class="row-val"></span></div>
+      <div class="card-row"><span class="row-label">Pending command</span><span id="rc-pending" class="row-val"></span></div>
+    </div>
+    <div class="action-row">
+      <button class="action-btn action-warning" onclick="sendRemoteCommand(editingUser.username,'END_PRIVACY')">⛔ End Privacy Screen</button>
+      <button class="action-btn action-danger"  onclick="sendRemoteCommand(editingUser.username,'CLOSE_TOOLBOX')">✕ Close Toolbox</button>
+    </div>
+    <div class="action-row" id="rc-cancel-row" style="display:none">
+      <button class="action-btn action-info" onclick="cancelRemoteCommand(editingUser.username)">Cancel pending command</button>
+    </div>
+    <div class="cfg-note">For when a technician loses power or internet and the customer is stuck behind the privacy screen. The toolbox on that PC obeys within ~30 s (while a privacy screen is up) or ~2 min. <strong>Close Toolbox</strong> also ends the privacy screen and signs the account out.</div>
 
     <button class="sheet-save" onclick="saveUser()">Save Changes</button>
     <button class="sheet-delete" onclick="deleteUser()">Delete User</button>
@@ -992,6 +1063,8 @@ const CONFIG = {
     TTA_LOG:      'tta_log',
     CREDIT_USAGE: 'credit_usage',
     RECEIPTS:     'receipts',
+    TPS:          'TPS',
+    REMOTE_LOG:   'remote_log',
   },
 };
 // ══════════════════════════════════════════════════════════════
@@ -999,6 +1072,10 @@ const CONFIG = {
 let gToken   = localStorage.getItem('gToken') || '';
 let allUsers = [], allSessions = [], allConfig = [], allHashes = [];
 let allTtaAccounts = [], allTtaLog = [], allCreditUsage = [], allReceipts = [];
+let allTpsLog = [], allRemoteLog = [];
+let usersHeadersChecked = false;
+// Full header row of the users sheet (columns L–P were added by later script updates).
+const USERS_HEADER = ['Username','Email','PasswordHash','Salt','TXFRPCredits','Status','ExpiresAt','CreatedAt','FailedAttempts','LockoutUntil','Notes','LoginOtp','LoginOtpExpiresAt','TrustedMachineId','RemoteCommand','RemoteCommandAt'];
 let editingUser = null, editingTta = null;
 let currentTab = 'users', currentTtaSub = 'pool', currentSessionsSub = 'active', currentUsersSub = 'list';
 let tokenClient = null;
@@ -1087,6 +1164,20 @@ async function sheetsAppend(sheet, values) {
   if (!r.ok) throw new Error('Append failed: ' + r.status);
   return r.json();
 }
+async function sheetsAppendMany(sheet, rows) {
+  const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    { method: 'POST', headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ majorDimension: 'ROWS', values: rows }) });
+  if (!r.ok) throw new Error('Append failed: ' + r.status);
+  return r.json();
+}
+// Reads a sheet that may not exist yet (new log sheets are created by the script on first use) — a missing sheet is just "no entries".
+async function loadOptionalSheet(name, range, mapper) {
+  try {
+    const rows = await sheetsGet(`${name}!${range}`);
+    return [...rows.map((r, i) => ({ _row: i+2, ...mapper(r) }))].reverse();   // newest first
+  } catch(e) { return []; }
+}
 async function getSheetId(name) {
   const r = await fetch(`${BASE}/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`, { headers: { Authorization: `Bearer ${gToken}` } });
   const j = await r.json();
@@ -1135,13 +1226,19 @@ async function loadAll() {
 async function loadUsers() {
   setContent('users-list', spinner());
   try {
-    const rows = await sheetsGet(`${CONFIG.SHEET.USERS}!A2:K`);
+    if (!usersHeadersChecked) {
+      usersHeadersChecked = true;
+      try { await ensureSheetExists(CONFIG.SHEET.USERS, USERS_HEADER); } catch(_) { /* header labels only — never block loading */ }
+    }
+    const rows = await sheetsGet(`${CONFIG.SHEET.USERS}!A2:P`);
     allUsers = rows.map((r, i) => ({
       _row: i+2, username: r[0]||'', email: r[1]||'',
       passwordHash: r[2]||'', salt: r[3]||'',
       txfrpCredits: +r[4]||0, status: r[5]||'Pending',
       expiresAt: r[6]||'', createdAt: r[7]||'',
       failedAttempts: +r[8]||0, lockoutUntil: r[9]||'', notes: r[10]||'',
+      trustedMachineId: (r[13]||'').trim(),
+      remoteCommand: (r[14]||'').trim().toUpperCase(), remoteCommandAt: +r[15]||0,
     }));
     renderUsers();
   } catch(e) { setContent('users-list', errMsg(e)); }
@@ -1179,6 +1276,15 @@ async function loadSessions() {
     }))].reverse();
     renderCreditUsage();
   } catch(e) { setContent('credit-usage-list', errMsg(e)); }
+
+  // Privacy-screen activity + delivered remote commands (sheets created by the script on first use)
+  setContent('tps-log-list', spinner()); setContent('remote-log-list', spinner());
+  allTpsLog = await loadOptionalSheet(CONFIG.SHEET.TPS, 'A2:D',
+    r => ({ username: r[0]||'', status: r[1]||'', dateTime: r[2]||'', fingerprint: r[3]||'' }));
+  allRemoteLog = await loadOptionalSheet(CONFIG.SHEET.REMOTE_LOG, 'A2:D',
+    r => ({ username: r[0]||'', command: (r[1]||'').toUpperCase(), dateTime: r[2]||'', machineId: r[3]||'' }));
+  renderTpsLog(); renderRemoteLog();
+  renderSessions();   // shield / pending-command info on the session cards
 }
 
 async function loadConfig() {
@@ -1241,7 +1347,7 @@ function renderUsers() {
         <div class="user-head">
           <div class="user-name-row">
             <span class="user-name">${esc(u.username)}</span>
-            <span class="status-badge ${statusCls}">${statusLabel.toUpperCase()}</span>
+            <span class="status-badge ${statusCls}">${statusLabel.toUpperCase()}</span>${u.remoteCommand ? `<span class="pending-chip">⏳ ${esc(u.remoteCommand)}</span>` : ''}
           </div>
           <div class="user-email">${esc(u.email)||'—'}</div>
         </div>
@@ -1263,25 +1369,173 @@ function renderUsers() {
   }).join(''));
 }
 
+// ── Helpers shared by sessions / users / config ──────────────────
+function cfgNum(key, def) {
+  const r = allConfig.find(c => c.key === key);
+  const n = r ? Number(String(r.value).trim()) : NaN;
+  return (r && String(r.value).trim() !== '' && !isNaN(n)) ? n : def;
+}
+function fmtMins(m) {
+  m = Math.max(0, Math.ceil(m));
+  if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60), r = m % 60;
+  return h + ' hr' + (r ? ' ' + r + ' min' : '');
+}
+function parseStamp(s) { const t = Date.parse(s); return isNaN(t) ? 0 : t; }
+function fmtStamp(s) { const t = parseStamp(s); return t ? new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : String(s||'—'); }
+function userByName(name) { const n = String(name||'').toLowerCase(); return allUsers.find(u => u.username.toLowerCase() === n) || null; }
+function hasLiveSession(name) { const n = String(name||'').toLowerCase(); return allSessions.some(s => s.username.toLowerCase() === n); }
+
+// Last privacy-screen event for a user (allTpsLog is newest-first). "ON" = last event was Activated within 12 h.
+function shieldState(username) {
+  const n = String(username||'').toLowerCase();
+  const last = allTpsLog.find(e => e.username.toLowerCase() === n);
+  if (!last) return null;
+  const t = parseStamp(last.dateTime);
+  const on = /^activated$/i.test(last.status.trim()) && (!t || Date.now() - t < 12*3600000);
+  return { on, status: last.status, time: t, raw: last.dateTime };
+}
+function cooldownInfo(s) {
+  const mins = cfgNum('ToolCoolDown', 10);
+  if (mins <= 0) return { text: 'No interval', color: 'var(--muted)' };
+  if (!s.loginAt) return { text: '—', color: 'var(--muted)' };
+  const left = s.loginAt + mins * 60000 - Date.now();
+  return left <= 0 ? { text: 'Interval finished', color: 'var(--green)' }
+                   : { text: 'Ends in ' + fmtMins(left / 60000), color: 'var(--amber)' };
+}
+
 function renderSessions() {
   if (!allSessions.length) { setContent('sessions-list', '<div class="empty-state">No active sessions.</div>'); return; }
   setContent('sessions-list', allSessions.map(s => {
     const minsAgo = s.lastBeat ? (Date.now()-s.lastBeat)/60000 : Infinity;
     const beatColor = minsAgo<5?'var(--green)':minsAgo<30?'var(--amber)':'var(--red)';
     const mid = s.machineId;
+    const cd = cooldownInfo(s);
+    const sh = shieldState(s.username);
+    const u  = userByName(s.username);
+    const pending = u && u.remoteCommand ? u.remoteCommand : '';
+    const shieldHtml = sh
+      ? (sh.on ? `<span style="color:var(--primary-lt);font-weight:700">● ON</span> <span style="color:var(--muted)">since ${esc(fmtStamp(sh.raw))}</span>`
+               : `<span style="color:var(--muted)">off · ${esc(sh.status)} ${esc(fmtStamp(sh.raw))}</span>`)
+      : '<span style="color:var(--dim)">no activity logged</span>';
     return `
       <div class="session-card">
         <div class="session-head">
-          <div><div class="session-name">${esc(s.username)}</div><div class="session-ver">v${esc(s.version)||'?'}</div></div>
+          <div><div class="session-name">${esc(s.username)}${pending ? ` <span class="pending-chip">⏳ ${esc(pending)}</span>` : ''}</div><div class="session-ver">v${esc(s.version)||'?'}</div></div>
           <button class="kick-btn" onclick="kickSession(${s._row},'${esc(s.username)}')">KICK</button>
         </div>
         <div class="session-body">
-          <div class="session-row"><span class="session-key">Machine ID</span><span class="session-val" style="font-family:var(--font-mono);font-size:11px">${mid.slice(0,22)}${mid.length>22?'…':''}</span></div>
+          <div class="session-row"><span class="session-key">Machine ID</span><span class="session-val" style="font-family:var(--font-mono);font-size:11px">${esc(mid.slice(0,22))}${mid.length>22?'…':''}</span></div>
           <div class="session-row"><span class="session-key">Logged in</span><span class="session-val">${s.loginAt?new Date(s.loginAt).toLocaleString():'—'}</span></div>
           <div class="session-row"><span class="session-key">Last heartbeat</span><span class="session-val" style="color:${beatColor}">${s.lastBeat?timeSince(s.lastBeat):'—'}</span></div>
+          <div class="session-row"><span class="session-key">Login interval</span><span class="session-val" style="color:${cd.color}">${esc(cd.text)}</span></div>
+          <div class="session-row"><span class="session-key">Privacy screen</span><span class="session-val">${shieldHtml}</span></div>
+        </div>
+        <div class="session-actions">
+          <button class="mini-btn mini-warn"   onclick="sendRemoteCommand('${esc(s.username)}','END_PRIVACY')">⛔ End Privacy</button>
+          <button class="mini-btn mini-danger" onclick="sendRemoteCommand('${esc(s.username)}','CLOSE_TOOLBOX')">✕ Close Toolbox</button>
+          ${pending ? `<button class="mini-btn mini-info" onclick="cancelRemoteCommand('${esc(s.username)}')">Cancel</button>` : ''}
         </div>
       </div>`;
   }).join(''));
+}
+
+// ── Privacy screen (TPS) log ───────────────────────────────────
+function tpsStatusStyle(status) {
+  const s = String(status||'').toLowerCase();
+  if (s.startsWith('auto')) return { dot: 'var(--amber)', label: status, color: 'var(--amber)' };
+  if (s === 'activated')    return { dot: 'var(--primary-lt)', label: status, color: 'var(--primary-lt)' };
+  return { dot: 'var(--muted)', label: status || '—', color: 'var(--muted)' };
+}
+function renderTpsLog() {
+  const latest = {};
+  allTpsLog.forEach(e => { const k = e.username.toLowerCase(); if (!latest[k]) latest[k] = e; });
+  const onNow = Object.values(latest).filter(e => shieldState(e.username)?.on).length;
+  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+  const today = allTpsLog.filter(e => parseStamp(e.dateTime) >= startOfDay.getTime()).length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('tps-active-count', onNow); set('tps-today-count', today);
+
+  if (!allTpsLog.length) {
+    setContent('tps-log-list', '<div class="empty-state">No privacy-screen activity logged yet.<br>Each Activate / Deactivate in the toolbox appears here.</div>');
+    return;
+  }
+  setContent('tps-log-list', `<div class="card" style="margin:0 12px 10px">` + allTpsLog.slice(0, 150).map(e => {
+    const st = tpsStatusStyle(e.status);
+    return `
+      <div class="log-row">
+        <div class="log-dot" style="background:${st.dot}"></div>
+        <div class="log-info">
+          <div class="log-user">${esc(e.username)} <span style="font-weight:600;color:${st.color}">· ${esc(st.label)}</span></div>
+          ${e.fingerprint ? `<div class="log-email" style="font-family:var(--font-mono)">${esc(e.fingerprint.slice(0,26))}${e.fingerprint.length>26?'…':''}</div>` : ''}
+        </div>
+        <div class="log-time">${esc(fmtStamp(e.dateTime))}</div>
+      </div>`;
+  }).join('') + `</div>`);
+}
+
+// ── Remote command deliveries ──────────────────────────────────
+function renderRemoteLog() {
+  if (!allRemoteLog.length) {
+    setContent('remote-log-list', '<div class="empty-state">No remote commands delivered yet.</div>');
+    return;
+  }
+  const label = { END_PRIVACY: 'Ended privacy screen', CLOSE_TOOLBOX: 'Closed toolbox' };
+  setContent('remote-log-list', `<div class="card" style="margin:0 12px 10px">` + allRemoteLog.slice(0, 150).map(e => `
+      <div class="log-row">
+        <div class="log-dot" style="background:${e.command==='CLOSE_TOOLBOX'?'var(--red)':'var(--amber)'}"></div>
+        <div class="log-info">
+          <div class="log-user">${esc(e.username)} <span style="font-weight:400;color:var(--muted)">· ${esc(label[e.command] || e.command)}</span></div>
+          ${e.machineId ? `<div class="log-email" style="font-family:var(--font-mono)">${esc(e.machineId.slice(0,26))}${e.machineId.length>26?'…':''}</div>` : ''}
+        </div>
+        <div class="log-time">${esc(fmtStamp(e.dateTime))}</div>
+      </div>`).join('') + `</div>`);
+}
+
+// ── Send / cancel a remote command (users sheet → columns O:P) ─
+// The toolbox reads RemoteCommand on its next heartbeat (~2 min), or every 30 s while a
+// privacy screen is up, runs it once, and clears the cell. RemoteCommandAt is stamped here
+// (the script's onEdit trigger doesn't fire for edits made through the Sheets API).
+async function sendRemoteCommand(username, cmd) {
+  const u = userByName(username);
+  if (!u) { toast('✗ User row not found — refresh first', true); return; }
+  const live = hasLiveSession(username);
+  const ttl = cfgNum('RemoteCommandTtlMinutes', 30);
+  const what = cmd === 'CLOSE_TOOLBOX'
+    ? `Sign "${u.username}" out and CLOSE their toolbox?\n\nThis also ends any privacy screen on that PC.`
+    : `End the privacy screen on "${u.username}"'s PC?`;
+  const extra = live ? '' : `\n\n⚠ This account has no live session right now. The command waits up to ${ttl} min for the toolbox to check in, then is ignored.`;
+  if (!confirm(what + extra)) return;
+  try {
+    const at = Date.now();
+    await sheetsPut(`${CONFIG.SHEET.USERS}!O${u._row}:P${u._row}`, [[cmd, at]]);
+    u.remoteCommand = cmd; u.remoteCommandAt = at;
+    toast('✓ Sent — it arrives within ~30 s–2 min (tap ↻ to see)');
+    renderUsers(); renderSessions();
+    if (editingUser && editingUser._row === u._row) refreshRemoteBox(u);
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+async function cancelRemoteCommand(username) {
+  const u = userByName(username); if (!u) return;
+  try {
+    await sheetsPut(`${CONFIG.SHEET.USERS}!O${u._row}:P${u._row}`, [['', '']]);
+    u.remoteCommand = ''; u.remoteCommandAt = 0;
+    toast('✓ Command cancelled');
+    renderUsers(); renderSessions();
+    if (editingUser && editingUser._row === u._row) refreshRemoteBox(u);
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+// Fills the "Remote Control" block of the user sheet
+function refreshRemoteBox(u) {
+  const live = allSessions.find(s => s.username.toLowerCase() === u.username.toLowerCase());
+  const ttl = cfgNum('RemoteCommandTtlMinutes', 30);
+  const set = (id, html, color) => { const el = document.getElementById(id); if (!el) return; el.innerHTML = html; el.style.color = color || ''; };
+  set('rc-session', live ? `Online · beat ${live.lastBeat ? timeSince(live.lastBeat) : '—'}` : `Offline (commands wait ${ttl} min)`, live ? 'var(--green)' : 'var(--muted)');
+  set('rc-trusted', u.trustedMachineId ? esc(u.trustedMachineId.slice(0, 18)) + (u.trustedMachineId.length > 18 ? '…' : '') : 'none yet', u.trustedMachineId ? '' : 'var(--muted)');
+  const sh = shieldState(u.username);
+  set('rc-shield', sh ? (sh.on ? '● ON' : 'off') : 'no activity', sh && sh.on ? 'var(--primary-lt)' : 'var(--muted)');
+  set('rc-pending', u.remoteCommand ? `${esc(u.remoteCommand)} · ${u.remoteCommandAt ? timeSince(u.remoteCommandAt) : ''}` : 'none', u.remoteCommand ? 'var(--amber)' : 'var(--muted)');
+  const row = document.getElementById('rc-cancel-row'); if (row) row.style.display = u.remoteCommand ? 'flex' : 'none';
 }
 
 function renderCreditUsage() {
@@ -1355,30 +1609,134 @@ function renderReceiptsList() {
   );
 }
 
+// ── Settings catalogue ─────────────────────────────────────────
+// label / hint / min for every setting the script reads from TXFRPConfig. "min" doubles as
+// validation for the numeric ones. Keys the sheet doesn't have yet are offered with their
+// default via the "Add missing settings" banner.
+const CFG_META = {
+  ToolCoolDown:            { label:'Login interval (minutes)',          hint:'Minutes before the same account can sign in on a different PC. 300 = 5 hours. 0 = no interval.', min:0 },
+  CostInstantLogin:        { label:'Instant login cost (credits)',      hint:'Credits to skip the interval. 0 = free, -1 = instant login off.', min:-1 },
+  MaxFailedAttempts:       { label:'Wrong passwords before lockout',    hint:'', min:1 },
+  LockoutMinutes:          { label:'Lockout length (minutes)',          hint:'How long the account stays locked after too many wrong passwords.', min:1 },
+  LoginOtpMinutes:         { label:'Login OTP lifetime (minutes)',      hint:'', min:1 },
+  OtpMaxAttempts:          { label:'OTP wrong guesses allowed',         hint:'Login and forgot-password codes. Then a new code is needed.', min:1 },
+  ResetOtpMinutes:         { label:'Reset OTP lifetime (minutes)',      hint:'Forgot-password code.', min:1 },
+  ResetOtpResendSeconds:   { label:'Reset OTP resend gap (seconds)',    hint:'Minimum time between two reset emails. 0 = no gap.', min:0 },
+  TtaRequestCost:          { label:'TTA request cost (credits)',        hint:'Credits per TTA account request. 0 = free.', min:0 },
+  TpsIdleReleaseMinutes:   { label:'Privacy screen idle release (min)', hint:'The shield ends by itself after this long with NO technician input. 0 = never. Keep it above your longest idle step.', min:0 },
+  RemoteCommandTtlMinutes: { label:'Remote command lifetime (minutes)', hint:'A kill-switch command that is not delivered within this time is ignored.', min:1 },
+};
+// Defaults used by "Add missing settings" (same values as the script's addAdvancedConfigRows()).
+const CFG_DEFAULTS = [
+  ['ToolCoolDown','10'], ['CostInstantLogin','1'], ['TtaRequestCost','2'],
+  ['MaxFailedAttempts','6'], ['LockoutMinutes','10'], ['LoginOtpMinutes','5'],
+  ['OtpMaxAttempts','5'], ['ResetOtpMinutes','10'], ['ResetOtpResendSeconds','60'],
+  ['TpsIdleReleaseMinutes','15'], ['RemoteCommandTtlMinutes','30'],
+  ['MaintenanceMessage',''], ['MaintenanceAllowUsers',''],
+];
+const MAINT_DEFAULT_MSG = 'T3CHS Tool Box is under maintenance. Please try again later.';
+
+function cfgRow(key) { return allConfig.find(c => c.key === key) || null; }
+
 function renderConfig() {
   const PRICE  = ['CostMiAssistFRP','CostFastbootEDL','CostFactoryReset','CostFMDCheck','CostServerStatus'];
+  const LOGIN  = ['ToolCoolDown','CostInstantLogin','MaxFailedAttempts','LockoutMinutes','LoginOtpMinutes','OtpMaxAttempts','ResetOtpMinutes','ResetOtpResendSeconds'];
+  const TPS    = ['TpsIdleReleaseMinutes','RemoteCommandTtlMinutes'];
   const SECRET = ['AHToolUsername','AHToolPassword'];
   const SERVER = ['AHToolServer'];
-  const TTA    = ['TtaSessionMinutes','TtaAdminEmail','TtaCooldownHours'];
+  const TTA    = ['TtaSessionMinutes','TtaAdminEmail','TtaCooldownHours','TtaRequestCost'];
+  const MAINT  = ['MaintenanceMessage','MaintenanceAllowUsers'];
+  const known  = [...PRICE,...LOGIN,...TPS,...SECRET,...SERVER,...TTA,...MAINT];
 
-  const section = (label, rows) => rows.length ? `
-    <div class="section-label">${label}</div>
-    <div class="card">${rows.map(r => configRow(r, SECRET.includes(r.key))).join('')}</div>` : '';
+  const section = (label, keys, rowsOverride) => {
+    const rows = rowsOverride || allConfig.filter(r => keys.includes(r.key));
+    // keep the catalogue order for known groups
+    if (!rowsOverride) rows.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
+    return rows.length ? `
+      <div class="section-label">${label}</div>
+      <div class="card">${rows.map(r => configRow(r, SECRET.includes(r.key))).join('')}</div>` : '';
+  };
+
+  const missing = CFG_DEFAULTS.filter(([k]) => !cfgRow(k));
+  const banner = missing.length ? `
+    <div class="banner-card">
+      <div class="banner-text">⚙ <strong>${missing.length} new setting${missing.length>1?'s':''}</strong> from the latest script update ${missing.length>1?'are':'is'} not in your sheet yet. Add ${missing.length>1?'them':'it'} with the default value${missing.length>1?'s':''} — nothing you already set is changed.</div>
+      <button class="save-row-btn" style="padding:8px 12px" onclick="addMissingConfig()">Add</button>
+    </div>` : '';
 
   setContent('config-list',
-    section('Pricing (Credits)', allConfig.filter(r => PRICE.includes(r.key))) +
-    section('AH-Tool Credentials', allConfig.filter(r => SECRET.includes(r.key) || SERVER.includes(r.key))) +
-    section('TTA Settings', allConfig.filter(r => TTA.includes(r.key))) +
-    section('Other', allConfig.filter(r => ![...PRICE,...SECRET,...SERVER,...TTA].includes(r.key))) +
+    banner +
+    renderMaintenanceCard() +
+    section('Login & Security', LOGIN) +
+    section('Pricing (Credits)', PRICE) +
+    section('Privacy Screen (TPS)', TPS) +
+    section('AH-Tool Credentials', [...SECRET,...SERVER]) +
+    section('TTA Settings', TTA) +
+    section('Other', null, allConfig.filter(r => !known.includes(r.key))) +
     '<div style="height:24px"></div>'
   );
 }
 
+function renderMaintenanceCard() {
+  const msg = (cfgRow('MaintenanceMessage')?.value || '').trim();
+  const allow = cfgRow('MaintenanceAllowUsers')?.value || '';
+  const on = !!msg;
+  return `
+    <div class="section-label">Maintenance Mode</div>
+    <div class="card maint-card ${on?'on':''}">
+      <div class="maint-head"><span class="maint-dot ${on?'on':''}"></span><span>${on ? 'ON — new logins are blocked' : 'OFF — everyone can sign in'}</span></div>
+      <div class="field-label">MESSAGE SHOWN TO USERS</div>
+      <textarea class="field-input field-textarea" id="maint-msg" placeholder="${esc(MAINT_DEFAULT_MSG)}">${esc(on ? msg : '')}</textarea>
+      <div class="divider"></div>
+      <div class="field-label">STILL ALLOWED TO LOG IN (usernames, comma separated)</div>
+      <input class="field-input" id="maint-allow" value="${esc(allow)}" placeholder="cipher, boaz"/>
+      <div class="action-row" style="padding:10px 14px 4px">
+        <button class="action-btn action-warning" onclick="setMaintenance(true)">${on ? 'Update message' : 'Turn ON'}</button>
+        <button class="action-btn action-teal" onclick="setMaintenance(false)" ${on ? '' : 'disabled'}>Turn OFF</button>
+      </div>
+      <div class="cfg-note">Blocks <strong>new</strong> logins only (sign-in, OTP). Running sessions, heartbeats and apps that are already open keep working. Users in the allow list can still sign in.</div>
+    </div>`;
+}
+
+// Writes one TXFRPConfig value, adding the row first if the sheet doesn't have it yet.
+async function setConfigValue(key, value) {
+  const r = cfgRow(key);
+  if (r) {
+    await sheetsPut(`${CONFIG.SHEET.CONFIG}!A${r._row}:B${r._row}`, [[key, value]]);
+    r.value = value;
+  } else {
+    await sheetsAppend(CONFIG.SHEET.CONFIG, [key, value]);
+  }
+}
+async function setMaintenance(on) {
+  const msgEl = document.getElementById('maint-msg'), allowEl = document.getElementById('maint-allow');
+  const allow = (allowEl?.value || '').trim();
+  const msg = on ? ((msgEl?.value || '').trim() || MAINT_DEFAULT_MSG) : '';
+  if (on && !confirm('Turn maintenance ON? Nobody (except the allowed users) will be able to start a new login until you turn it off.')) return;
+  try {
+    await setConfigValue('MaintenanceMessage', msg);
+    await setConfigValue('MaintenanceAllowUsers', allow);
+    toast(on ? '✓ Maintenance ON' : '✓ Maintenance OFF');
+    await loadConfig();
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+async function addMissingConfig() {
+  const missing = CFG_DEFAULTS.filter(([k]) => !cfgRow(k));
+  if (!missing.length) return;
+  try {
+    await sheetsAppendMany(CONFIG.SHEET.CONFIG, missing.map(([k, v]) => [k, v]));
+    toast(`✓ Added ${missing.length} setting${missing.length>1?'s':''}`);
+    await loadConfig();
+  } catch(e) { toast('✗ ' + e.message, true); }
+}
+
 function configRow(r, isSecret) {
-  const label = r.key.replace(/([A-Z])/g,' $1').replace(/^Cost /,'').replace(/^AHTool /,'AH-Tool ').replace(/^Tta/,'TTA ').trim();
+  const meta = CFG_META[r.key];
+  const label = meta ? meta.label : r.key.replace(/([A-Z])/g,' $1').replace(/^Cost /,'').replace(/^AHTool /,'AH-Tool ').replace(/^Tta/,'TTA ').trim();
+  const hint = meta && meta.hint ? `<small>${esc(meta.hint)}</small>` : '';
   return `
     <div class="config-row" id="cfg-row-${r._row}">
-      <span class="config-key">${label}</span>
+      <span class="config-key">${esc(label)}${hint}</span>
       <div class="config-val-wrap">
         <input class="config-input" id="cfg-${r._row}" value="${esc(r.value)}"
           type="${isSecret?'password':'text'}"
@@ -1399,10 +1757,17 @@ async function saveConfigRow(row) {
   const r = allConfig.find(c => c._row===row);
   const val = document.getElementById('cfg-'+row).value;
   const btn = document.getElementById('cfg-btn-'+row);
+  const meta = CFG_META[r.key];
+  if (meta && meta.min !== undefined) {           // numeric setting → whole number ≥ min
+    const n = Number(String(val).trim());
+    if (String(val).trim() === '' || !Number.isInteger(n) || n < meta.min) {
+      toast(`✗ ${meta.label}: whole number ${meta.min} or higher`, true); return;
+    }
+  }
   btn.textContent = '…';
   try {
     await sheetsPut(`${CONFIG.SHEET.CONFIG}!A${row}:B${row}`, [[r.key, val]]);
-    r.value = val; btn.style.display = 'none'; toast('✓ Saved');
+    r.value = val; btn.style.display = 'none'; btn.textContent = 'Save'; toast('✓ Saved');
   } catch(e) { toast('✗ '+e.message, true); btn.textContent = 'Save'; }
 }
 
@@ -1500,7 +1865,7 @@ function switchTab(tab) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-'+tab).classList.add('active');
   document.getElementById('nav-'+tab).classList.add('active');
-  const titles = { users:'Users', sessions:'Sessions', config:'TXFRP Config', hashes:'Known Hashes', tta:'TTA Pool' };
+  const titles = { users:'Users', sessions:'Sessions', config:'Settings', hashes:'Known Hashes', tta:'TTA Pool' };
   document.getElementById('page-title').textContent = titles[tab]||tab;
   refreshCurrentTab();
 }
@@ -1512,10 +1877,11 @@ function refreshCurrentTab() {
 
 function switchSessionsSub(sub) {
   currentSessionsSub = sub;
-  document.getElementById('sessions-active-view').style.display = sub==='active' ? 'block' : 'none';
-  document.getElementById('sessions-credit-view').style.display = sub==='credit' ? 'block' : 'none';
-  document.getElementById('sessions-sub-active').classList.toggle('active', sub==='active');
-  document.getElementById('sessions-sub-credit').classList.toggle('active', sub==='credit');
+  const views = { active:'sessions-active-view', credit:'sessions-credit-view', tps:'sessions-tps-view', remote:'sessions-remote-view' };
+  Object.entries(views).forEach(([k, id]) => {
+    document.getElementById(id).style.display = k === sub ? 'block' : 'none';
+    document.getElementById('sessions-sub-' + k).classList.toggle('active', k === sub);
+  });
   if (sub === 'credit') {
     localStorage.setItem('seenCreditUsageCount', String(allCreditUsage.length));
     updateBadge('credit-usage-badge', 0);
@@ -1556,6 +1922,7 @@ function openUser(row) {
   document.getElementById('fail-count').textContent         = u.failedAttempts||'0';
   document.getElementById('fail-count').style.color         = u.failedAttempts>0?'var(--amber)':'var(--text2)';
   updateStatusPills(u.status);
+  refreshRemoteBox(u);
   openSheet('user-sheet');
 }
 function pickStatus(s) { editingUser.status=s; updateStatusPills(s); }
@@ -1847,11 +2214,26 @@ async function resetPassword() {
   try {
     await sheetsPut(`${CONFIG.SHEET.USERS}!C${editingUser._row}:D${editingUser._row}`,[['','']]);
     await sheetsPut(`${CONFIG.SHEET.USERS}!I${editingUser._row}:J${editingUser._row}`,[[0,'']]);
-    editingUser.passwordHash=''; editingUser.salt='';
+    // Same as the script's own password reset: the next login from ANY PC needs an OTP again.
+    await sheetsPut(`${CONFIG.SHEET.USERS}!N${editingUser._row}`,[['']]);
+    editingUser.passwordHash=''; editingUser.salt=''; editingUser.trustedMachineId='';
+    const u = allUsers.find(x=>x._row===editingUser._row); if (u) { u.passwordHash=''; u.salt=''; u.trustedMachineId=''; }
     document.getElementById('pwd-status').textContent='⚠ Not set';
     document.getElementById('pwd-status').style.color='var(--amber)';
     document.getElementById('fail-count').textContent='0';
+    refreshRemoteBox(editingUser);
     toast('✓ Password reset');
+  } catch(e) { toast('✗ '+e.message,true); }
+}
+async function forgetTrustedPc() {
+  if (!editingUser) return;
+  if (!confirm(`Forget the trusted PC for "${editingUser.username}"?\n\nTheir next login (even from the same PC) will ask for an email OTP again.`)) return;
+  try {
+    await sheetsPut(`${CONFIG.SHEET.USERS}!N${editingUser._row}`,[['']]);
+    editingUser.trustedMachineId = '';
+    const u = allUsers.find(x=>x._row===editingUser._row); if (u) u.trustedMachineId = '';
+    refreshRemoteBox(editingUser);
+    toast('✓ Next login will ask for an OTP');
   } catch(e) { toast('✗ '+e.message,true); }
 }
 async function clearLockout() {

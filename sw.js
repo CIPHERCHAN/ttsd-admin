@@ -1,4 +1,4 @@
-const CACHE = 'ttsd-admin-v10';
+const CACHE = 'ttsd-admin-v11';
 const ASSETS = ['./', './index.html', './manifest.json', './barcode.js'];
 
 self.addEventListener('install', e => {

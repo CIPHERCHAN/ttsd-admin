@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<meta name="theme-color" content="#06060F"/>
+<meta name="theme-color" content="#06060B"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -21,22 +21,30 @@
 <script src="barcode.js"></script>
 <style>
 /* ── Design tokens ───────────────────────────────────────────── */
+/* REDESIGN: swapped the purple/teal palette for the actual T3CHS brand
+   (Drivers/TdaResources.xaml in the Toolbox project) — magenta is the one
+   primary accent everywhere, violet is reserved as the TTA section's own
+   identity color (same role teal used to play), and the background now
+   matches the exact dark tone (#06060B) used by the Toolbox and the T4
+   warning dialog. Variable NAMES are unchanged on purpose (--primary,
+   --teal, etc.) so every rule below that already references them picks
+   up the new brand automatically — only the values changed. */
 :root{
-  --bg:       #06060F;
+  --bg:       #06060B;
   --surf:     rgba(255,255,255,0.04);
   --surf2:    rgba(255,255,255,0.06);
   --surf3:    rgba(255,255,255,0.08);
   --border:   rgba(255,255,255,0.07);
   --border2:  rgba(255,255,255,0.11);
 
-  --primary:      #7C3AED;
-  --primary-lt:   #9B6BF7;
-  --primary-dim:  rgba(124,58,237,0.18);
-  --primary-glow: rgba(124,58,237,0.45);
+  --primary:      #FF00C8;
+  --primary-lt:   #FF66DC;
+  --primary-dim:  rgba(255,0,200,0.16);
+  --primary-glow: rgba(255,0,200,0.45);
 
-  --teal:     #10B981;
-  --teal-dim: rgba(16,185,129,0.15);
-  --teal-glow:rgba(16,185,129,0.4);
+  --teal:     #8B00FF;
+  --teal-dim: rgba(139,0,255,0.15);
+  --teal-glow:rgba(139,0,255,0.45);
 
   --text:   #E8E8F0;
   --text2:  #A0A0B8;
@@ -64,6 +72,7 @@
   --radius-lg:16px;
   --nav-h:    64px;
   --hdr-h:    56px;
+  --side-w:   216px;
 
   --font-body:'DM Sans', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
@@ -79,14 +88,15 @@ html,body{
 }
 
 /* ── Gradient mesh background ────────────────────────────────── */
-/* Glass needs depth behind it — three purple orbs + base dark */
+/* Glass needs depth behind it — magenta + violet orbs on the brand's own
+   dark base, instead of the old unrelated purple mesh. */
 body{
   background:
-    radial-gradient(ellipse 80% 60% at 15% 10%,  rgba(124,58,237,0.28) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 85%,  rgba(109,40,217,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 55% 45%,  rgba(16,185,129,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(76,29,149,0.35) 0%, transparent 60%),
-    #06060F;
+    radial-gradient(ellipse 80% 60% at 15% 10%,  rgba(255,0,200,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 85%,  rgba(139,0,255,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 55% 45%,  rgba(255,0,200,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(75,0,130,0.35) 0%, transparent 60%),
+    #06060B;
 }
 
 /* ── App shell ───────────────────────────────────────────────── */
@@ -97,7 +107,7 @@ header{
   height:var(--hdr-h);flex-shrink:0;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 16px;
-  background:rgba(6,6,15,0.6);
+  background:rgba(6,6,11,0.6);
   backdrop-filter:var(--blur-md);
   -webkit-backdrop-filter:var(--blur-md);
   border-bottom:1px solid var(--border);
@@ -133,7 +143,7 @@ header::after{
 /* ── Nav ─────────────────────────────────────────────────────── */
 nav{
   height:var(--nav-h);display:flex;flex-shrink:0;
-  background:rgba(6,6,15,0.65);
+  background:rgba(6,6,11,0.65);
   backdrop-filter:var(--blur-md);
   -webkit-backdrop-filter:var(--blur-md);
   border-top:1px solid var(--border);
@@ -148,7 +158,7 @@ nav::before{
   justify-content:center;gap:4px;cursor:pointer;border:none;
   background:none;color:var(--muted);font-family:var(--font-body);
   font-size:9.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
-  position:relative;transition:color .18s;
+  position:relative;transition:color .18s,background .18s;
 }
 .nav-btn::after{
   content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;
@@ -164,10 +174,10 @@ nav::before{
 #login-screen{
   position:fixed;inset:0;
   background:
-    radial-gradient(ellipse 80% 60% at 15% 10%,  rgba(124,58,237,0.28) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 85%,  rgba(109,40,217,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(76,29,149,0.35) 0%, transparent 60%),
-    #06060F;
+    radial-gradient(ellipse 80% 60% at 15% 10%,  rgba(255,0,200,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 85%,  rgba(139,0,255,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(75,0,130,0.35) 0%, transparent 60%),
+    #06060B;
   display:flex;align-items:center;justify-content:center;
   padding:24px;z-index:100;
 }
@@ -178,7 +188,7 @@ nav::before{
   -webkit-backdrop-filter:var(--blur-lg);
   border:1px solid rgba(255,255,255,0.10);
   border-radius:20px;padding:36px 24px;text-align:center;
-  box-shadow:0 0 80px rgba(124,58,237,0.2), var(--glass-shadow), var(--glass-shine);
+  box-shadow:0 0 80px rgba(255,0,200,0.18), var(--glass-shadow), var(--glass-shine);
 }
 .login-brand{
   font-family:var(--font-mono);font-size:11px;font-weight:600;
@@ -188,15 +198,15 @@ nav::before{
 .login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
 .login-err{color:var(--red);font-size:13px;margin-bottom:12px}
 #signin-btn{
-  width:100%;background:linear-gradient(135deg,#7C3AED,#5B21B6);
+  width:100%;background:linear-gradient(135deg,#FF00C8,#8B00FF);
   border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;
   padding:14px;cursor:pointer;margin-bottom:14px;
   display:flex;align-items:center;justify-content:center;gap:10px;
   opacity:.4;pointer-events:none;font-family:var(--font-body);
-  box-shadow:0 4px 20px rgba(124,58,237,0.5);transition:opacity .2s,box-shadow .2s;
+  box-shadow:0 4px 20px rgba(255,0,200,0.45);transition:opacity .2s,box-shadow .2s;
 }
 #signin-btn.ready{opacity:1;pointer-events:auto}
-#signin-btn:active{box-shadow:0 2px 10px rgba(124,58,237,0.4)}
+#signin-btn:active{box-shadow:0 2px 10px rgba(255,0,200,0.4)}
 .login-hint{font-size:11px;color:var(--dim);line-height:1.6}
 
 /* ── Section labels ──────────────────────────────────────────── */
@@ -226,7 +236,7 @@ nav::before{
 /* ── Search ──────────────────────────────────────────────────── */
 .search-wrap{
   padding:10px 12px;position:sticky;top:0;
-  background:rgba(6,6,15,0.55);
+  background:rgba(6,6,11,0.55);
   backdrop-filter:var(--blur-md);
   -webkit-backdrop-filter:var(--blur-md);
   z-index:2;
@@ -273,10 +283,10 @@ nav::before{
 .status-Activated{color:var(--green);background:var(--green-dim);border-color:rgba(34,197,94,0.3)}
 .status-Pending  {color:var(--amber);background:var(--amber-dim);border-color:rgba(245,158,11,0.3)}
 .status-Suspended,.status-Expired{color:var(--red);background:var(--red-dim);border-color:rgba(240,64,64,0.3)}
-.status-Available{color:var(--teal); background:var(--teal-dim); border-color:rgba(16,185,129,0.3)}
+.status-Available{color:var(--teal); background:var(--teal-dim); border-color:rgba(139,0,255,0.3)}
 .status-InUse    {color:var(--amber);background:var(--amber-dim);border-color:rgba(245,158,11,0.3)}
 .status-Locked   {color:var(--red);  background:var(--red-dim);  border-color:rgba(240,64,64,0.3)}
-.status-Cooldown {color:#8B5CF6;background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.3)}
+.status-Cooldown {color:#C084FC;background:rgba(192,132,252,0.12);border-color:rgba(192,132,252,0.3)}
 
 /* ── Session cards ───────────────────────────────────────────── */
 .session-card{
@@ -350,7 +360,7 @@ nav::before{
 }
 .pool-count{font-size:22px;font-weight:700;font-family:var(--font-mono);line-height:1}
 .pool-label{font-size:9px;font-weight:700;letter-spacing:.8px;margin-top:3px;font-family:var(--font-mono);text-transform:uppercase}
-.pool-available{border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.07)}
+.pool-available{border-color:rgba(139,0,255,0.3);background:rgba(139,0,255,0.07)}
 .pool-available .pool-count,.pool-available .pool-label{color:var(--teal)}
 .pool-inuse{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.07)}
 .pool-inuse .pool-count,.pool-inuse .pool-label{color:var(--amber)}
@@ -396,7 +406,7 @@ nav::before{
 /* ── TTA sub-tabs ────────────────────────────────────────────── */
 .sub-tabs{
   display:flex;border-bottom:1px solid var(--border);
-  background:rgba(6,6,15,0.55);
+  background:rgba(6,6,11,0.55);
   backdrop-filter:var(--blur-md);
   -webkit-backdrop-filter:var(--blur-md);
   position:sticky;top:0;z-index:2;
@@ -426,10 +436,10 @@ nav::before{
 
 /* ── Receipt card ─────────────────────────────────────────────── */
 .receipt-card{
-  background:linear-gradient(180deg, rgba(124,58,237,0.12), rgba(6,6,15,0.92) 45%);
+  background:linear-gradient(180deg, rgba(255,0,200,0.10), rgba(6,6,11,0.92) 45%);
   border:1px solid var(--border2);
   border-radius:18px;overflow:hidden;
-  box-shadow:0 0 50px rgba(124,58,237,0.22), var(--glass-shadow), var(--glass-shine);
+  box-shadow:0 0 50px rgba(255,0,200,0.18), var(--glass-shadow), var(--glass-shine);
   margin:0 2px;position:relative;
 }
 .receipt-corner{position:absolute;width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--teal));opacity:.5;z-index:2}
@@ -439,7 +449,7 @@ nav::before{
 .receipt-corner.br{bottom:12px;right:12px}
 .receipt-top-bar{height:4px;background:linear-gradient(90deg,var(--primary),var(--teal))}
 .receipt-header{text-align:center;padding:24px 20px 14px}
-.receipt-logo{width:110px;height:110px;object-fit:contain;margin:0 auto 2px;display:block;filter:drop-shadow(0 4px 20px rgba(124,58,237,0.6))}
+.receipt-logo{width:110px;height:110px;object-fit:contain;margin:0 auto 2px;display:block;filter:drop-shadow(0 4px 20px rgba(255,0,200,0.5))}
 .receipt-brand{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:5px;color:var(--text)}
 .receipt-tagline{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--muted);margin-top:5px;text-transform:uppercase}
 .receipt-divider{height:1px;margin:6px 22px;background-image:repeating-linear-gradient(90deg,var(--border2) 0 6px,transparent 6px 12px)}
@@ -458,15 +468,15 @@ nav::before{
 .fab{
   position:fixed;bottom:calc(var(--nav-h) + 16px);
   right:50%;transform:translateX(calc(50% + 220px - 16px));
-  background:linear-gradient(135deg,#7C3AED,#5B21B6);
+  background:linear-gradient(135deg,#FF00C8,#8B00FF);
   border:none;border-radius:28px;color:#fff;
   font-size:14px;font-weight:700;padding:12px 20px;cursor:pointer;
-  box-shadow:0 4px 24px rgba(124,58,237,0.5);z-index:10;
+  box-shadow:0 4px 24px rgba(255,0,200,0.45);z-index:10;
   font-family:var(--font-body);transition:box-shadow .2s;
 }
-.fab:active{box-shadow:0 2px 8px rgba(124,58,237,0.4)}
-.fab-teal{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 4px 24px rgba(16,185,129,0.5)}
-.fab-teal:active{box-shadow:0 2px 8px rgba(16,185,129,0.4)}
+.fab:active{box-shadow:0 2px 8px rgba(255,0,200,0.4)}
+.fab-teal{background:linear-gradient(135deg,#8B00FF,#5B21B6);box-shadow:0 4px 24px rgba(139,0,255,0.45)}
+.fab-teal:active{box-shadow:0 2px 8px rgba(139,0,255,0.4)}
 @media(max-width:480px){.fab{right:16px;transform:none}}
 
 /* ── Bottom sheet / overlay ──────────────────────────────────── */
@@ -478,7 +488,7 @@ nav::before{
 }
 .overlay.open{display:flex}
 .sheet{
-  background:rgba(10,8,20,0.82);
+  background:rgba(10,8,14,0.82);
   backdrop-filter:var(--blur-lg);
   -webkit-backdrop-filter:var(--blur-lg);
   border-top:1px solid rgba(255,255,255,0.10);
@@ -542,17 +552,17 @@ nav::before{
 .action-warning{color:var(--amber);background:var(--amber-dim);border-color:rgba(245,158,11,0.3)}
 .action-info{color:var(--blue);background:var(--blue-dim);border-color:rgba(96,165,250,0.3)}
 .action-danger{color:var(--red);background:var(--red-dim);border-color:rgba(240,64,64,0.3)}
-.action-teal{color:var(--teal);background:var(--teal-dim);border-color:rgba(16,185,129,0.3)}
+.action-teal{color:var(--teal);background:var(--teal-dim);border-color:rgba(139,0,255,0.3)}
 .sheet-save{
   display:block;width:calc(100% - 28px);margin:8px 14px;
-  background:linear-gradient(135deg,#7C3AED,#5B21B6);border:none;
+  background:linear-gradient(135deg,#FF00C8,#8B00FF);border:none;
   border-radius:11px;color:#fff;font-size:16px;font-weight:700;
   padding:14px;cursor:pointer;font-family:var(--font-body);
-  box-shadow:0 4px 20px rgba(124,58,237,0.4);
+  box-shadow:0 4px 20px rgba(255,0,200,0.4);
 }
 .sheet-save-teal{
-  background:linear-gradient(135deg,#10B981,#059669);
-  box-shadow:0 4px 20px rgba(16,185,129,0.4);
+  background:linear-gradient(135deg,#8B00FF,#5B21B6);
+  box-shadow:0 4px 20px rgba(139,0,255,0.4);
 }
 .sheet-delete{
   display:block;width:calc(100% - 28px);margin:6px 14px 24px;
@@ -565,7 +575,7 @@ nav::before{
 .toast{
   position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;
   transform:translateX(-50%);
-  background:rgba(16,14,28,0.85);
+  background:rgba(16,14,22,0.85);
   backdrop-filter:var(--blur-md);
   -webkit-backdrop-filter:var(--blur-md);
   border:1px solid rgba(255,255,255,0.10);
@@ -593,7 +603,7 @@ nav::before{
 .pending-chip{
   display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
   letter-spacing:.4px;padding:2px 8px;border-radius:6px;font-family:var(--font-mono);
-  color:#8B5CF6;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);
+  color:#C084FC;background:rgba(192,132,252,0.12);border:1px solid rgba(192,132,252,0.3);
 }
 .config-key small{display:block;font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.4;font-weight:400}
 .cfg-note{font-size:11px;color:var(--muted);padding:2px 18px 12px;line-height:1.55}
@@ -613,7 +623,7 @@ nav::before{
 .chip{
   display:inline-flex;align-items:center;gap:6px;padding:6px 6px 6px 11px;border-radius:16px;
   font-size:12px;font-weight:600;color:var(--teal);background:var(--teal-dim);
-  border:1px solid rgba(16,185,129,0.3);
+  border:1px solid rgba(139,0,255,0.3);
 }
 .chip.unknown{color:var(--amber);background:var(--amber-dim);border-color:rgba(245,158,11,0.3)}
 .chip .x{
@@ -637,6 +647,69 @@ nav::before{
 }
 .field-select option{background:#14141f;color:var(--text)}
 .mini-link{background:none;border:none;color:var(--primary-lt);font-size:11px;font-weight:700;cursor:pointer;padding:6px 14px 10px;font-family:var(--font-body)}
+
+/* ── Desktop window (≥860px): a real window, not a phone column ──────
+   REDESIGN: below this width every rule above still governs, so the
+   mobile/PWA experience is completely untouched. At or above it, the
+   bottom tab bar becomes a left sidebar, the card lists become a
+   responsive grid instead of one letterboxed column, and dialogs read
+   as centered windows instead of a stretched-out bottom sheet — because
+   this is an admin tool people run in a browser tab on a real monitor,
+   not a phone screen. */
+@media(min-width:860px){
+  html,body{overflow:auto}
+  body{display:flex;align-items:flex-start;justify-content:center;padding:32px 20px}
+  #app{
+    position:relative;
+    max-width:1180px;width:100%;height:calc(100vh - 64px);min-height:620px;
+    border-radius:18px;border:1px solid var(--border2);
+    box-shadow:0 30px 90px rgba(0,0,0,0.55), var(--glass-shine);
+  }
+  header{position:absolute;top:0;left:var(--side-w);right:0;z-index:5}
+  #main{margin-left:var(--side-w);margin-top:var(--hdr-h);height:calc(100% - var(--hdr-h))}
+
+  nav{
+    position:absolute;top:0;left:0;bottom:0;width:var(--side-w);height:auto;
+    flex-direction:column;align-items:stretch;justify-content:flex-start;
+    border-top:none;border-right:1px solid var(--border);
+    padding:18px 10px 20px;gap:2px;
+  }
+  nav::before{display:none}
+  .nav-btn{
+    flex:none;flex-direction:row;justify-content:flex-start;gap:12px;
+    padding:11px 12px;border-radius:9px;font-size:13px;letter-spacing:.1px;
+    text-transform:none;font-weight:600;
+  }
+  .nav-btn::after{display:none}
+  .nav-btn.active{background:var(--primary-dim)}
+  .nav-btn.tta-tab.active{background:var(--teal-dim)}
+  .nav-icon{width:18px;height:18px;flex-shrink:0}
+
+  /* Card lists use the room a real window has instead of one column */
+  #users-list,#sessions-list,#hashes-list,#tta-list,
+  #credit-usage-list,#tps-log-list,#remote-log-list,#tta-log-list,#receipts-list{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
+    align-items:start;gap:0 10px;
+  }
+  #users-list>*,#sessions-list>*,#hashes-list>*,#tta-list>*,
+  #credit-usage-list>.card,#tps-log-list>.card,#remote-log-list>.card,#tta-log-list>.card{
+    margin:0 0 10px;
+  }
+
+  /* Dialogs: a centered window, not a phone sheet pinned to the bottom */
+  .overlay{align-items:center}
+  .sheet{
+    max-width:460px;width:92%;max-height:84vh;
+    border-radius:16px;border:1px solid rgba(255,255,255,0.10);
+    border-top-left-radius:16px;border-top-right-radius:16px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.55), var(--glass-shine);
+  }
+  .sheet-handle{display:none} /* that's a swipe-to-dismiss affordance for a phone sheet; this is a window */
+
+  .fab{position:absolute;right:28px;bottom:28px;transform:none}
+  .toast{bottom:28px}
+}
+
 </style>
 </head>
 <body>
